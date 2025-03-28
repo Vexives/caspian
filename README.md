@@ -97,19 +97,21 @@ The setup and training of a model in Caspian is similar to other deep learning l
 ### Creation of a Model:
 
 ```python
-from caspian import layers as nn, activations as ac, optimizers as op
+from caspian.layers import Layer, Dense
+from caspian.activations import Activation, Softmax
+from caspian.optimizers import Optimizer
 import numpy as np
 
-class NeuralNet(nn.Layer):
+class NeuralNet(Layer):
     def __init__(self, inputs: int, hiddens: int, outputs: int, 
-                 activation: ac.Activation, opt: op.Optimizer):
+                 activation: Activation, opt: Optimizer):
         in_size = (inputs,)
         out_size = (outputs,)
         super().__init__(in_size, out_size)
 
-        self.x_1 = nn.Dense(activation, inputs, hiddens, optimizer=opt.deepcopy())
-        self.x_2 = nn.Dense(activation, hiddens, outputs, optimizer=opt.deepcopy())
-        self.softmax = ac.Softmax()
+        self.x_1 = Dense(activation, inputs, hiddens, optimizer=opt.deepcopy())
+        self.x_2 = Dense(activation, hiddens, outputs, optimizer=opt.deepcopy())
+        self.softmax = Softmax()
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         self.training = training
@@ -135,10 +137,10 @@ This is a simple neural network model containing two `Dense` layers, each with t
 ### Creation of an Activation Function:
 
 ```python
-from caspian import activations as ac
+from caspian.activations import Activation
 import numpy as np
 
-class ReLU(ac.Activation):
+class ReLU(Activation):
     def forward(self, data: np.ndarray) -> np.ndarray:
         return np.maximum(0, data)
 
@@ -152,10 +154,10 @@ Creating a new activation function is quite simple as well, and only expects two
 ### Creation of a Pooling Function:
 
 ```python
-from caspian import pooling as pf
+from caspian.pooling import PoolFunc
 import numpy as np
 
-class Average(pf.PoolFunc):
+class Average(PoolFunc):
     def forward(self, partition: np.ndarray) -> np.ndarray:
         return np.average(partition)
     
@@ -163,16 +165,16 @@ class Average(pf.PoolFunc):
         return partition * (1.0 / partition.shape[self.axis])
 ```
 
-Similar in structure to activation functions, but pooling functions return an `ndarray` with a smaller array rather than an array with the same size as the partition. Like activations as well, can be called like a standard Python function if inheriting from the `PoolFunc` abstract class.
+Similar in structure to activation functions, but pooling functions return an `ndarray` with a smaller array rather than an array with the same size as the partition. Like activations as well, can be called like a standard Python function if inheriting from the `PoolFunc` abstract class. Each pooling function will have an internal variable `self.axis` (can be set during initialization) which can be used at any point in both the forward and backward passes.
 
 
 ### Creation of a Loss Function:
 
 ```python
-from caspian import losses as lf
+from caspian.losses import Loss
 import numpy as np
 
-class CrossEntropy(lf.Loss):
+class CrossEntropy(Loss):
     @staticmethod
     def forward(actual: np.ndarray, prediction: np.ndarray) -> float:
         clip_pred = np.clip(prediction, 1e-10, 1 - 1e-10)
@@ -188,13 +190,13 @@ Loss functions quantify the rate of error of a model's predictions and provides 
 
 ### Creation of an Optimizer:
 ```python
-from caspian import optimizers as op
-from caspian import schedulers as sc
+from caspian.optimizers import Optimizer
+from caspian.schedulers import Scheduler
 import numpy as np
 
-class Momentum(op.Optimizer):
+class Momentum(Optimizer):
     def __init__(self, momentum: float = 0.9, learn_rate: float = 0.01, 
-                 sched: sc.Scheduler) -> None:
+                 sched: Scheduler) -> None:
         super().__init__(learn_rate, sched)
         self.momentum = momentum
         self.previous = 0.0
@@ -229,10 +231,10 @@ The function `deepcopy()` is highly recommended if being used on multiple layers
 
 ### Creation of a Learning Rate Scheduler:
 ```python
-from caspian import schedulers as sc
+from caspian.schedulers import Scheduler
 import numpy as np
 
-class ConstantLR(sc.Scheduler):
+class ConstantLR(Scheduler):
     def __init__(self, steps: int, const: float = 0.1) -> None:
         self.steps = steps
         self.const = const
@@ -259,68 +261,62 @@ This is a basic scheduler that multiplies the initial learning rate by a set con
 Now, here's an example on how to create a neural network which can recognize digits from the [MNIST](https://keras.io/api/datasets/mnist/) data set using only Caspian tools:
 
 ```python
-from caspian import layers as nn
-from caspian import activations as ac
-from caspian import optimizers as op 
-from caspian import losses as lf
+import numpy as np
+
+from caspian.layers import Conv2D, Pooling2D, Reshape, Dense, Container, Sequence
+from caspian.activations import Sigmoid, ReLU, Softmax
+from caspian.pooling import Maximum
+from caspian.losses import BinCrossEntropy
+from caspian.optimizers import StandardGD
 from keras.datasets import mnist
 
-#Function to test accuracy of model
-def get_accuracy(predictions, labels):
-    num_accurate = 0
-    for i in range(len(labels)):
-        if predictions[i] == labels[i]:
-            num_accurate += 1
-    print(f"Accuracy: {(num_accurate/len(labels))*100}%")
+#Import the dataset and reshape
+(xtrain, ytrain), (xtest, ytest) = mnist.load_data()
+x_train = np.array(xtrain).reshape(xtrain.shape[0], 784)
+x_test = np.array(xtest).reshape(xtest.shape[0], 784)
+y_train = np.zeros((ytrain.shape[0], ytrain.max()+1), dtype=np.float32)
 
-#Load the data
-(train_data, x), (test_data, y) = mnist.load_data()
-train_data = train_data.reshape(train_data.shape[0], 784)
-test_data = test_data.reshape(test_data.shape[0], 784)
+for i in range(len(y_train)):
+    y_train[i][int(ytrain[i])] = 1
 
-train_labels = np.zeros((x.shape[0], x.max()+1), dtype=np.float32)
-for i in range(len(train_labels)):
-    train_labels[i][int(x[i])] = 1
+xt = x_train.reshape(-1, 60, 1, 28, 28) / 255.0
+yt = y_train.reshape(-1, 60, 10)
+print(xt.shape)
+print(yt.shape)
 
-test_labels = np.zeros((y.shape[0], y.max()+1), dtype=np.float32)
-for i in range(len(test_labels)):
-    test_labels[i][int(y[i])] = 1
+#Create the model to be trained
+optim = StandardGD(0.0005)
 
-#Constructing the model
-optim = op.ADAM(learn_rate = 0.005)
+d1 = Conv2D(Sigmoid(), 32, 3, (1, 28, 28))
+d2 = Pooling2D(Maximum(), 2, (32, 26, 26), 2)
+d3 = Conv2D(Sigmoid(), 12, 3, (32, 13, 13))
+d4 = Pooling2D(Maximum(), 2, (12, 11, 11), 2)
+d5 = Reshape((-1, 12, 5, 5), (-1, 12*5*5))
+d6 = Dense(ReLU(), 12*5*5, 100)
+d7 = Dense(Sigmoid(), 100, 10)
+d8 = Container(Softmax())
 
-l1 = nn.Dense(ReLU(), 784, 256)
-l2 = nn.Dropout((256,), 0.45)
-l3 = nn.Dense(ReLU(), 256, 256)
-l4 = nn.Dropout((256,), 0.45)
-l5 = nn.Dense(Sigmoid(), 256, 10)
-l6 = nn.Container(Softmax())
-
-Seq1 = nn.Sequence([l1, l2, l3, l4, l5, l6])
+Seq1 = Sequence([d1, d2, d3, d4, d5, d6, d7])
 Seq1.set_optimizer(optim)
 
-ent = lf.CrossEntropy()
+ent = BinCrossEntropy()
 
-#Training on given data
+#Training
 losses = 0.0
-for i in range(25):
-    for data, label in zip(train_data, train_labels):
-        prediction = Seq.forward(data, True)
+for ep in range(50):
+    for x, y in zip(xt, yt):
+        x_r = Seq1.forward(x, True)
 
-        loss = ent.forward(label, prediction)
-        err = ent.backward(label, prediction)
+        err_grad = ent.backward(y, x_r)
 
-        Seq1.backward(err)
+        loss = ent.forward(y, x_r)
+
+        Seq1.backward(err_grad)
         Seq1.step()
-        
-        losses += loss
-    print(f"Epoch {i+1} - Loss: {losses / train_data.shape[0]}")
-    losses = 0.0
 
-#Get accuracy of newly trained model
-predictions = model.forward(test_data)
-predictions = [a.argmax() for a in predictions]
-get_accuracy(predictions, test_labels)
+        losses += loss
+    print(f"Epoch {ep+1} - {losses / xt.shape[0]}")
+    losses = 0.0
 ```
 
 The example above uses all of the tools that were created to stochastically train a basic neural network that can recognize digits 0 through 9 on a 28x28 size image. Improvements and changes can be made to the model for greater accuracy using other tools in the Caspian library.
