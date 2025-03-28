@@ -19,7 +19,7 @@ class Sequence(Layer):
     
     Some other layers may also not be used inside of a `Sequence`, specifically layers which expect
     either multiple inputs or multiple gradients to work properly. An example of this would be the
-    `Recurrent` cell layer, or the `Bilinear` layer.
+    `Bilinear` layer.
         
     
     Attributes
