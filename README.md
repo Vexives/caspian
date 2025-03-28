@@ -45,7 +45,7 @@ Before installing, this library requires:
 - CuPy (12x) v13.0.0+ **(Optional)**
 
 ```bash
-$ pip install git+https://github.com/vexives/caspian
+$ pip install git+https://github.com/Vexives/caspian
 ```
 
 
@@ -72,10 +72,10 @@ If an optimizer is required for a layer but not provided in the initialization, 
 
 #### GPU Computing
 
-Caspian and its tools can also be used with [CUDA] through [CuPy] to increase speeds by a significant amount. Before importing Caspian or any of its other tools, place this segment of Python code above the other imports:
+Caspian and its tools can also be used with [CUDA] through [CuPy] to increase speeds by a significant amount. Before importing Caspian or any of its tools, place this segment of Python code above the other imports:
 ```python
-from caspian.use_cuda import enable_cuda
-enable_cuda() 
+import os
+os.environ["CSPN_CUDA"] = "cuda"
 ```
 This ensures that all modules and tools from Caspian are synced with [CUDA], and [CUDA]-supported GPU computing should be enabled as long as [CuPy] and the [CUDA] toolkit are both properly installed.
 
