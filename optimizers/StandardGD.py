@@ -1,6 +1,6 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Optimizer
-from schedulers import Scheduler, SchedulerLR
+from caspian.schedulers import Scheduler, SchedulerLR
 
 class StandardGD(Optimizer):
     """

@@ -6,7 +6,7 @@ from .RMSProp import RMSProp
 from .ADAGrad import ADAGrad
 from .ADAM import ADAM
 
-from schedulers import parse_sched_info
+from caspian.schedulers import parse_sched_info
 
 opt_dict: dict[str, Optimizer] = {"StandardGD":StandardGD,
                                   "Momentum":Momentum,

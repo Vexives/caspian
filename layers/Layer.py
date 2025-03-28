@@ -1,5 +1,5 @@
-from cudalib import np
-from optimizers import Optimizer
+from caspian.cudalib import np
+from caspian.optimizers import Optimizer
 
 class Layer():
     '''

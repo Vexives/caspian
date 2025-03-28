@@ -97,19 +97,19 @@ The setup and training of a model in Caspian is similar to other deep learning l
 ### Creation of a Model:
 
 ```python
-import caspian as cspn
+from caspian import layers as nn, activations as ac, optimizers as op
 import numpy as np
 
-class NeuralNet(cspn.Layer):
+class NeuralNet(nn.Layer):
     def __init__(self, inputs: int, hiddens: int, outputs: int, 
-                 activation: cspn.Activation, opt: cspn.Optimizer):
+                 activation: ac.Activation, opt: op.Optimizer):
         in_size = (inputs,)
         out_size = (outputs,)
         super().__init__(in_size, out_size)
 
-        self.x_1 = cspn.Dense(activation, inputs, hiddens, optimizer=opt.deepcopy())
-        self.x_2 = cspn.Dense(activation, hiddens, outputs, optimizer=opt.deepcopy())
-        self.softmax = Softmax()
+        self.x_1 = nn.Dense(activation, inputs, hiddens, optimizer=opt.deepcopy())
+        self.x_2 = nn.Dense(activation, hiddens, outputs, optimizer=opt.deepcopy())
+        self.softmax = ac.Softmax()
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         self.training = training
@@ -135,10 +135,10 @@ This is a simple neural network model containing two `Dense` layers, each with t
 ### Creation of an Activation Function:
 
 ```python
-import caspian as cspn
+from caspian import activations as ac
 import numpy as np
 
-class ReLU(cspn.Activation):
+class ReLU(ac.Activation):
     def forward(self, data: np.ndarray) -> np.ndarray:
         return np.maximum(0, data)
 
@@ -152,27 +152,27 @@ Creating a new activation function is quite simple as well, and only expects two
 ### Creation of a Pooling Function:
 
 ```python
-import caspian as cspn
+from caspian import pooling as pf
 import numpy as np
 
-class Average(cspn.PoolFunc):
+class Average(pf.PoolFunc):
     def forward(self, partition: np.ndarray) -> np.ndarray:
         return np.average(partition)
     
     def backward(self, partition: np.ndarray) -> np.ndarray:
-        return partition * (1.0 / partition.size)
+        return partition * (1.0 / partition.shape[self.axis])
 ```
 
-Similar in structure to activation functions, but pooling functions return an `ndarray` with a singular value rather than an array with the same size as the partition. Like activations as well, can be called like a standard Python function if inheriting from the `PoolFunc` abstract class.
+Similar in structure to activation functions, but pooling functions return an `ndarray` with a smaller array rather than an array with the same size as the partition. Like activations as well, can be called like a standard Python function if inheriting from the `PoolFunc` abstract class.
 
 
 ### Creation of a Loss Function:
 
 ```python
-import caspian as cspn
+from caspian import losses as lf
 import numpy as np
 
-class CrossEntropy(cspn.Loss):
+class CrossEntropy(lf.Loss):
     @staticmethod
     def forward(actual: np.ndarray, prediction: np.ndarray) -> float:
         clip_pred = np.clip(prediction, 1e-10, 1 - 1e-10)
@@ -188,12 +188,13 @@ Loss functions quantify the rate of error of a model's predictions and provides 
 
 ### Creation of an Optimizer:
 ```python
-import caspian as cspn
+from caspian import optimizers as op
+from caspian import schedulers as sc
 import numpy as np
 
-class Momentum(cspn.Optimizer):
+class Momentum(op.Optimizer):
     def __init__(self, momentum: float = 0.9, learn_rate: float = 0.01, 
-                 sched: cspn.Scheduler) -> None:
+                 sched: sc.Scheduler) -> None:
         super().__init__(learn_rate, sched)
         self.momentum = momentum
         self.previous = 0.0
@@ -228,10 +229,10 @@ The function `deepcopy()` is highly recommended if being used on multiple layers
 
 ### Creation of a Learning Rate Scheduler:
 ```python
-import caspian as cspn
+from caspian import schedulers as sc
 import numpy as np
 
-class ConstantLR(cspn.Scheduler):
+class ConstantLR(sc.Scheduler):
     def __init__(self, steps: int, const: float = 0.1) -> None:
         self.steps = steps
         self.const = const
@@ -258,6 +259,10 @@ This is a basic scheduler that multiplies the initial learning rate by a set con
 Now, here's an example on how to create a neural network which can recognize digits from the [MNIST](https://keras.io/api/datasets/mnist/) data set using only Caspian tools:
 
 ```python
+from caspian import layers as nn
+from caspian import activations as ac
+from caspian import optimizers as op 
+from caspian import losses as lf
 from keras.datasets import mnist
 
 #Function to test accuracy of model
@@ -282,19 +287,19 @@ for i in range(len(test_labels)):
     test_labels[i][int(y[i])] = 1
 
 #Constructing the model
-optim = cspn.ADAM(learn_rate = 0.005)
+optim = op.ADAM(learn_rate = 0.005)
 
-l1 = cspn.Dense(ReLU(), 784, 256)
-l2 = cspn.Dropout((256,), 0.45)
-l3 = cspn.Dense(ReLU(), 256, 256)
-l4 = cspn.Dropout((256,), 0.45)
-l5 = cspn.Dense(Sigmoid(), 256, 10)
-l6 = cspn.Container(Softmax())
+l1 = nn.Dense(ReLU(), 784, 256)
+l2 = nn.Dropout((256,), 0.45)
+l3 = nn.Dense(ReLU(), 256, 256)
+l4 = nn.Dropout((256,), 0.45)
+l5 = nn.Dense(Sigmoid(), 256, 10)
+l6 = nn.Container(Softmax())
 
-Seq1 = cspn.Sequence([l1, l2, l3, l4, l5, l6])
+Seq1 = nn.Sequence([l1, l2, l3, l4, l5, l6])
 Seq1.set_optimizer(optim)
 
-ent = cspn.CrossEntropy()
+ent = lf.CrossEntropy()
 
 #Training on given data
 losses = []

@@ -1,4 +1,4 @@
-from cudalib import np
+from caspian.cudalib import np
 
 def dilate_array(array: np.ndarray, new_shape: tuple[int, ...], 
                  strides: tuple[int, ...]) -> np.ndarray:

@@ -1,6 +1,6 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Layer
-from optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD
 
 class Sequence(Layer):
     """

@@ -1,8 +1,8 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Layer
-from optimizers import Optimizer, StandardGD
-from activations import Activation, parse_act_info
-from utilities import dilate_array
+from caspian.optimizers import Optimizer, StandardGD
+from caspian.activations import Activation, parse_act_info
+from caspian.utilities import dilate_array
 
 class Conv1D(Layer):
     """

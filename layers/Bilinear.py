@@ -1,7 +1,7 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Dense
-from optimizers import Optimizer, StandardGD
-from activations import Activation, parse_act_info
+from caspian.optimizers import Optimizer, StandardGD
+from caspian.activations import Activation, parse_act_info
 
 class Bilinear(Dense):
     """

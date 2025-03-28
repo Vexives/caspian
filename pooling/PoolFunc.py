@@ -1,4 +1,4 @@
-from cudalib import np
+from caspian.cudalib import np
 
 class PoolFunc():
     '''
@@ -12,6 +12,9 @@ class PoolFunc():
 
     def __call__(self, partition: np.ndarray, backward: bool = False) -> np.ndarray:
         return self.backward(partition) if backward else self.forward(partition)
+    
+    def __repr__(self):
+        return f"{self.__class__.__name__}/{self.axis}"
 
     def forward(self, data: np.ndarray) -> np.ndarray:
         pass

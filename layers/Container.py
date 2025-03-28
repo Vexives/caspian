@@ -1,6 +1,6 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Layer
-from activations import Activation, parse_act_info
+from caspian.activations import Activation, parse_act_info
 
 class Container(Layer):
     '''

@@ -1,4 +1,4 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Loss
 
 class Huber(Loss):

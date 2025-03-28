@@ -1,6 +1,6 @@
-from cudalib import np
+from caspian.cudalib import np
 from . import Layer
-from pooling import PoolFunc, pool_funct_dict
+from caspian.pooling import PoolFunc, parse_pool_info
 
 class Pooling1D(Layer):
     """
@@ -219,7 +219,7 @@ class Pooling1D(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Pooling1D\u00A0{self.funct.__class__.__name__}\u00A0" + " ".join(list(map(str, self.in_size))) + \
+        write_ret_str = f"Pooling1D\u00A0{repr(self.funct)}\u00A0" + " ".join(list(map(str, self.in_size))) + \
                         f"\nLENS\u00A0{self.kernel_size}\u00A0{self.strides}\u00A0{self.padding_all}\n\u00A0"
         if not filename:
             return write_ret_str
@@ -256,7 +256,7 @@ class Pooling1D(Layer):
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
             main_info = data_arr[0].split("\u00A0")
-            funct = pool_funct_dict[main_info[1]]
+            funct = parse_pool_info(main_info[1])
             in_size = tuple(map(int, main_info[2].split()))
 
             sec_info = data_arr[1].split("\u00A0")

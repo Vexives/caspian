@@ -1,5 +1,5 @@
-from cudalib import np
-from schedulers import Scheduler, SchedulerLR
+from caspian.cudalib import np
+from caspian.schedulers import Scheduler, SchedulerLR
 
 class Optimizer():
     '''
