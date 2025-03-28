@@ -11,6 +11,12 @@ class Conv1D(Layer):
     Only supports data with 2 or 3 (when batch is included) dimensions as input. The exact shape
     must be specifically stated when initializing the layer.
 
+    
+    Memory Safety
+    -------------
+    This layer is not memory safe if modified. Be extremely careful when modifying any sort of
+    variable of this layer, as it may cause memory dangers if done incorrectly.
+
 
     Attributes
     ---------
