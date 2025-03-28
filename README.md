@@ -268,10 +268,10 @@ from keras.datasets import mnist
 #Function to test accuracy of model
 def get_accuracy(predictions, labels):
     num_accurate = 0
-    for i in range(len(new_j)):
-        if new_j[i] == ytest[i]:
+    for i in range(len(labels)):
+        if predictions[i] == labels[i]:
             num_accurate += 1
-    print(f"Accuracy: {(num_accurate/len(new_j))*100}%")
+    print(f"Accuracy: {(num_accurate/len(labels))*100}%")
 
 #Load the data
 (train_data, x), (test_data, y) = mnist.load_data()
