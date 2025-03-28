@@ -302,7 +302,7 @@ Seq1.set_optimizer(optim)
 ent = lf.CrossEntropy()
 
 #Training on given data
-losses = []
+losses = 0.0
 for i in range(25):
     for data, label in zip(train_data, train_labels):
         prediction = Seq.forward(data, True)
@@ -313,9 +313,9 @@ for i in range(25):
         Seq1.backward(err)
         Seq1.step()
         
-        losses.append(loss)
-    print(f"Epoch {i+1} - Loss: {err}")
-    losses = []
+        losses += loss
+    print(f"Epoch {i+1} - Loss: {losses / train_data.shape[0]}")
+    losses = 0.0
 
 #Get accuracy of newly trained model
 predictions = model.forward(test_data)
