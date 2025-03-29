@@ -31,12 +31,6 @@ class ADAM(Optimizer):
         becomes a decaying concentrated estimate (`d_two`) as more gradients are processed.
     iter : int
         The epoch or iteration of the optimizer.
-
-
-    References
-    ----------
-    [1] D. P. Kingma and J. Ba, “Adam: A Method for Stochastic Optimization,” 
-    arXiv.org, https://doi.org/10.48550/arXiv.1412.6980. 
     """
     def __init__(self, decay_one: float = 0.9, decay_two: float = 0.999, eps: float = 1e-8,
                  learn_rate: float = 0.01, sched: Scheduler = SchedulerLR()) -> None:

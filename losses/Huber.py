@@ -10,11 +10,6 @@ class Huber(Loss):
     ----------
     delta : float
         The delta value of the equation to which the array's results will be compared to.
-
-    References
-    ----------
-    [1] S. Lau, J. Gonzalez, and D. Nolan, “Minimizing Huber Loss,” Learning Data Science, 
-    https://learningds.org/ch/20/gd_example.html. 
     """
     def __init__(self, delta: float = 1.0):
         self.delta = delta
