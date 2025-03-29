@@ -32,15 +32,6 @@ class LayerNorm(Layer):
     bias_weight : ndarray
         A single dimensional array of values that correspond to the learnable bias values added
         after normalization.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_stdv : ndarray | None
-        A saved value for the last standard deviation value array, only stored if `training` is set 
-        to `True` during a forward pass.
-    norm_res : ndarray | None
-        A saved value for the last normalized result, only stored if `training` is set to `True`
-        during a forward pass. Does not include the result of the applied weights & biases (if applicable).
 
 
     Examples
@@ -110,9 +101,8 @@ class LayerNorm(Layer):
         new_data = ((shaped_data - layer_mean) / stdv)
 
         if training:
-            self.last_in = shaped_data
-            self.norm_res = new_data
-            self.last_stdv = stdv
+            self.__norm_res = new_data
+            self.__last_stdv = stdv
 
         #Full weight and bias application, if applicable
         new_data = self.layer_weight * new_data if self.layer_weight is not None else new_data
@@ -144,12 +134,12 @@ class LayerNorm(Layer):
         opt_err = self.opt.process_grad(shaped_err)                   #Weight/Bias update gradient with optimizer
 
         ret_grad = (shaped_err - shaped_err.mean(axis=-1, keepdims=True) 
-                    - self.norm_res * (shaped_err * self.norm_res).mean(axis=-1, keepdims=True)) \
-                    / self.last_stdv
+                    - self.__norm_res * (shaped_err * self.__norm_res).mean(axis=-1, keepdims=True)) \
+                    / self.__last_stdv
         
         #Update weights and biases (if applicable)
         if self.layer_weight is not None:
-            self.layer_weight += (opt_err * self.norm_res).sum(axis=0)
+            self.layer_weight += (opt_err * self.__norm_res).sum(axis=0)
     
         if self.bias_weight is not None:
             self.bias_weight += opt_err.sum(axis=0)
@@ -163,9 +153,8 @@ class LayerNorm(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.last_stdv = None
-        self.norm_res = None
+        self.__last_stdv = None
+        self.__norm_res = None
         self.opt.reset_grad()
 
 

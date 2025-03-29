@@ -23,12 +23,6 @@ class ADAM(Optimizer):
         The initial learn rate that is given to this layer's scheduler.
     scheduler : Scheduler
         The learn rate scheduler that this optimizer wraps.
-    m : float | ndarray
-        The first (biased) moment estimate for a gradient pass. First initialized to 0.0, but
-        becomes a decaying concentrated estimate (`d_one`) as more gradients are processed.
-    v : float | ndarray
-        The second (biased) moment estimate for a gradient pass. First initialized to 0.0, but
-        becomes a decaying concentrated estimate (`d_two`) as more gradients are processed.
     iter : int
         The epoch or iteration of the optimizer.
     """
@@ -39,8 +33,8 @@ class ADAM(Optimizer):
         self.d_one = decay_one
         self.d_two = decay_two
         self.eps = eps
-        self.m = 0.0
-        self.v = 0.0
+        self.__m = 0.0
+        self.__v = 0.0
         self.iter = 1
     
     def __repr__(self) -> str:
@@ -50,12 +44,12 @@ class ADAM(Optimizer):
         learn_rate = self.scheduler(self.learn_rate)
         
         #Moment Estimates
-        self.m = self.d_one * self.m + (1 - self.d_one) * grad
-        self.v = self.d_two * self.v + (1 - self.d_two) * grad**2
+        self.__m = self.d_one * self.__m + (1 - self.d_one) * grad
+        self.__v = self.d_two * self.__v + (1 - self.d_two) * grad**2
 
         #Bias-Corrected Moment Estimates
-        m_hat = self.m / (1 - self.d_one**self.iter)
-        v_hat = self.v / (1 - self.d_two**self.iter)
+        m_hat = self.__m / (1 - self.d_one**self.iter)
+        v_hat = self.__v / (1 - self.d_two**self.iter)
 
         #Final RMS Stage
         new_grad = (-learn_rate * m_hat) / (np.sqrt(v_hat) + self.eps)
@@ -66,8 +60,8 @@ class ADAM(Optimizer):
         self.scheduler.step()
     
     def reset_grad(self) -> None:
-        self.m = 0.0
-        self.v = 0.0
+        self.__m = 0.0
+        self.__v = 0.0
         self.iter = 1
         self.scheduler.reset()
 

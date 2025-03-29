@@ -35,17 +35,8 @@ class Pooling1D(Layer):
     pad_left, pad_right : int
         The number of data points to be added to the left and right sides of the data, respectively.
         Corresponds to each half of `padding_all`, with `pad_left` being the first to increment.
-    window_shape : tuple[int, int, int]
-        The shape that the data will take whenever a strided view is created for forward and backward
-        passes.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -95,7 +86,7 @@ class Pooling1D(Layer):
         out_size = (in_size[0],
                     (in_size[1] - self.kernel_size + padding) // self.strides + 1)
         super().__init__(in_size, out_size)
-        self.window_shape = (*self.out_size, self.kernel_size)
+        self.__window_shape = (*self.out_size, self.kernel_size)
 
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
@@ -123,7 +114,7 @@ class Pooling1D(Layer):
                    data_padded.strides[1],
                    self.strides * data_padded.strides[2], 
                    data_padded.strides[2])
-        data_win_shape = (new_data.shape[0],) + self.window_shape
+        data_win_shape = (new_data.shape[0],) + self.__window_shape
 
         #Split data into windows, then apply function to each window.
         data_windows = np.lib.stride_tricks.as_strided(data_padded, 
@@ -132,8 +123,8 @@ class Pooling1D(Layer):
         pool_val = self.funct(data_windows)
 
         if training:
-            self.last_in = data_padded
-            self.last_out = pool_val
+            self.__last_in = data_padded
+            self.__last_out = pool_val
 
         if len(data.shape) < 3:
             pool_val = pool_val.squeeze(axis=0)
@@ -157,14 +148,14 @@ class Pooling1D(Layer):
             same shape as this layer's input shape.
         """
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
-        main_strides = (self.last_in.strides[0], 
-                        self.last_in.strides[1],
-                        self.strides * self.last_in.strides[2], 
-                        self.last_in.strides[2])
-        main_win_shape = (new_err.shape[0],) + self.window_shape
+        main_strides = (self.__last_in.strides[0], 
+                        self.__last_in.strides[1],
+                        self.strides * self.__last_in.strides[2], 
+                        self.__last_in.strides[2])
+        main_win_shape = (new_err.shape[0],) + self.__window_shape
         
         #Window frames for previous input / Mask creation
-        main_windows = np.lib.stride_tricks.as_strided(self.last_in, 
+        main_windows = np.lib.stride_tricks.as_strided(self.__last_in, 
                                                        main_win_shape, 
                                                        main_strides)
         mask = self.funct(main_windows, backward=True)
@@ -173,7 +164,7 @@ class Pooling1D(Layer):
         pre_grad = np.einsum("ngw,ngwx->ngwx", new_err, mask)
 
         #Zero array of original size
-        ret_grad = np.zeros_like(self.last_in)
+        ret_grad = np.zeros_like(self.__last_in)
         ret_windows = np.lib.stride_tricks.as_strided(ret_grad, 
                                                       main_win_shape, 
                                                       main_strides)
@@ -193,8 +184,8 @@ class Pooling1D(Layer):
 
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass and sets the variables to `None`."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
 
 
     def set_optimizer(self, *_) -> None:

@@ -44,17 +44,8 @@ class Pooling3D(Layer):
     pad_front, pad_back : int
         The number of data points to be added to the front and back sides of the data, respectively.
         Corresponds to each half of `pad_depth`, with `pad_front` being the first to increment.
-    window_shape : tuple[int, int, int, int, int, int, int]
-        The shape that the data will take whenever a strided view is created for forward and backward
-        passes.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -110,7 +101,7 @@ class Pooling3D(Layer):
                     (in_size[2] - self.kernel_height + self.pad_height) // self.stride_h + 1, 
                     (in_size[3] - self.kernel_width + self.pad_width) // self.stride_w + 1)
         super().__init__(in_size, out_size)
-        self.window_shape = (*self.out_size, 
+        self.__window_shape = (*self.out_size, 
                              self.kernel_depth,
                              self.kernel_height, 
                              self.kernel_width)
@@ -146,7 +137,7 @@ class Pooling3D(Layer):
                    data_padded.strides[2], 
                    data_padded.strides[3],
                    data_padded.strides[4])
-        data_win_shape = (new_data.shape[0],) + self.window_shape
+        data_win_shape = (new_data.shape[0],) + self.__window_shape
 
         #Split into windows, and apply the pooling function to each window.
         data_windows = np.lib.stride_tricks.as_strided(data_padded, 
@@ -155,8 +146,8 @@ class Pooling3D(Layer):
         pool_val = self.funct(data_windows.reshape((*data_windows.shape[:-3], -1)))
 
         if training:
-            self.last_in = data_padded
-            self.last_out = pool_val
+            self.__last_in = data_padded
+            self.__last_out = pool_val
 
         if len(data.shape) < 5:
             pool_val = pool_val.squeeze(axis=0)
@@ -180,18 +171,18 @@ class Pooling3D(Layer):
             same shape as this layer's input shape.
         """
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 5 else cost_err   #Enforce batches.
-        strides = (self.last_in.strides[0], 
-                   self.last_in.strides[1],
-                   self.stride_d * self.last_in.strides[2],
-                   self.stride_h * self.last_in.strides[3], 
-                   self.stride_w * self.last_in.strides[4], 
-                   self.last_in.strides[2], 
-                   self.last_in.strides[3],
-                   self.last_in.strides[4])
-        main_win_shape = (new_err.shape[0],) + self.window_shape
+        strides = (self.__last_in.strides[0], 
+                   self.__last_in.strides[1],
+                   self.stride_d * self.__last_in.strides[2],
+                   self.stride_h * self.__last_in.strides[3], 
+                   self.stride_w * self.__last_in.strides[4], 
+                   self.__last_in.strides[2], 
+                   self.__last_in.strides[3],
+                   self.__last_in.strides[4])
+        main_win_shape = (new_err.shape[0],) + self.__window_shape
         
         #Window frames for previous input / Mask creation
-        main_windows = np.lib.stride_tricks.as_strided(self.last_in,
+        main_windows = np.lib.stride_tricks.as_strided(self.__last_in,
                                                        main_win_shape, 
                                                        strides)
         mask = self.funct(main_windows.reshape((*main_windows.shape[:-3], -1)), backward=True) \
@@ -201,7 +192,7 @@ class Pooling3D(Layer):
         pre_grad = np.einsum("ngdhw,ngdhwxyz->ngdhwxyz", new_err, mask)
 
         # Zero array of original size (channels, in height, in width)
-        ret_grad = np.zeros_like(self.last_in)
+        ret_grad = np.zeros_like(self.__last_in)
         ret_windows = np.lib.stride_tricks.as_strided(ret_grad, 
                                                       main_win_shape, 
                                                       strides)
@@ -224,8 +215,8 @@ class Pooling3D(Layer):
 
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass and sets the variables to `None`."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
 
 
     def set_optimizer(self, *_) -> None:

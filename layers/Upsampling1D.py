@@ -12,9 +12,6 @@ class Upsampling1D(Layer):
     ---------
     rate : int
         The multiplicative size scaling rate of this layer.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -57,7 +54,7 @@ class Upsampling1D(Layer):
             The forward propagated array with a new upsampled size.
         """
         if training:
-            self.last_in = data
+            self.__last_in = data
         return np.kron(data, np.ones(self.rate))
     
 
@@ -77,7 +74,7 @@ class Upsampling1D(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        ret_grad = cost_err.reshape((-1, self.rate, self.last_in.shape[-1])).sum(axis=-2)
+        ret_grad = cost_err.reshape((-1, self.rate, self.__last_in.shape[-1])).sum(axis=-2)
         return ret_grad
     
 
@@ -88,7 +85,7 @@ class Upsampling1D(Layer):
 
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass."""
-        self.last_in = None
+        self.__last_in = None
 
 
     def set_optimizer(self, *_) -> None:

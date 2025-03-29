@@ -41,17 +41,11 @@ class Pooling2D(Layer):
     pad_top, pad_bottom : int
         The number of data points to be added to the top and bottom sides of the data, respectively.
         Corresponds to each half of `pad_height`, with `pad_top` being the first to increment.
-    window_shape : tuple[int, int, int, int, int, int]
+    __window_shape : tuple[int, int, int, int, int, int]
         The shape that the data will take whenever a strided view is created for forward and backward
         passes.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -104,7 +98,7 @@ class Pooling2D(Layer):
                     (in_size[1] - self.kernel_height + self.pad_height) // self.stride_h + 1, 
                     (in_size[2] - self.kernel_width + self.pad_width) // self.stride_w + 1)
         super().__init__(in_size, out_size)
-        self.window_shape = (*self.out_size, 
+        self.__window_shape = (*self.out_size, 
                              self.kernel_height, 
                              self.kernel_width)
 
@@ -136,7 +130,7 @@ class Pooling2D(Layer):
                    self.stride_w * data_padded.strides[3], 
                    data_padded.strides[2], 
                    data_padded.strides[3])
-        data_win_shape = (new_data.shape[0],) + self.window_shape
+        data_win_shape = (new_data.shape[0],) + self.__window_shape
 
         #Split into windows, and apply the pooling function to each window.
         data_windows = np.lib.stride_tricks.as_strided(data_padded, 
@@ -145,8 +139,8 @@ class Pooling2D(Layer):
         pool_val = self.funct(data_windows.reshape((*data_windows.shape[:-2], -1)))
 
         if training:
-            self.last_in = data_padded
-            self.last_out = pool_val
+            self.__last_in = data_padded
+            self.__last_out = pool_val
 
         if len(data.shape) < 4:
             pool_val = pool_val.squeeze(axis=0)
@@ -170,16 +164,16 @@ class Pooling2D(Layer):
             same shape as this layer's input shape.
         """
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 4 else cost_err   #Enforce batches.
-        main_strides = (self.last_in.strides[0], 
-                   self.last_in.strides[1],
-                   self.stride_h * self.last_in.strides[2], 
-                   self.stride_w * self.last_in.strides[3], 
-                   self.last_in.strides[2], 
-                   self.last_in.strides[3])
-        main_win_shape = (new_err.shape[0],) + self.window_shape
+        main_strides = (self.__last_in.strides[0], 
+                   self.__last_in.strides[1],
+                   self.stride_h * self.__last_in.strides[2], 
+                   self.stride_w * self.__last_in.strides[3], 
+                   self.__last_in.strides[2], 
+                   self.__last_in.strides[3])
+        main_win_shape = (new_err.shape[0],) + self.__window_shape
         
         #Window frames for previous input / Mask creation
-        main_windows = np.lib.stride_tricks.as_strided(self.last_in, 
+        main_windows = np.lib.stride_tricks.as_strided(self.__last_in, 
                                                        main_win_shape, 
                                                        main_strides)
         mask = self.funct(main_windows.reshape((*main_windows.shape[:-2], -1)), backward=True) \
@@ -189,7 +183,7 @@ class Pooling2D(Layer):
         pre_grad = np.einsum("nghw,nghwxy->nghwxy", new_err, mask)
 
         #Zero array of original size (channels, in height, in width)
-        ret_grad = np.zeros_like(self.last_in)
+        ret_grad = np.zeros_like(self.__last_in)
         ret_windows = np.lib.stride_tricks.as_strided(ret_grad, 
                                                       main_win_shape, 
                                                       main_strides)
@@ -211,8 +205,8 @@ class Pooling2D(Layer):
 
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass and sets the variables to `None`."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
 
 
     def set_optimizer(self, *_) -> None:

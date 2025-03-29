@@ -33,12 +33,6 @@ class Dense(Layer):
         The given activation class which performs the desired non-linear transform to the data.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -98,8 +92,8 @@ class Dense(Layer):
         data = np.expand_dims(data, axis=-1)
         new_val = self.funct((self.layer_weight @ data) + self.bias_weight)
         if training:
-            self.last_in = data
-            self.last_out = new_val
+            self.__last_in = data
+            self.__last_out = new_val
         return new_val.squeeze(axis=-1)
     
 
@@ -121,12 +115,12 @@ class Dense(Layer):
             same shape as this layer's input shape.
         """
         cost_err = np.expand_dims(cost_err, axis=-1)
-        new_err = cost_err * self.funct(self.last_out, True)
+        new_err = cost_err * self.funct(self.__last_out, True)
         
         new_grad = self.opt(new_err)
         ret_grad = (np.transpose(self.layer_weight) @ new_err).squeeze(axis=-1)
 
-        layer_grad = new_grad @ np.moveaxis(self.last_in, -1, -2)
+        layer_grad = new_grad @ np.moveaxis(self.__last_in, -1, -2)
         self.layer_weight += layer_grad if len(layer_grad.shape) == 2 else \
                              layer_grad.reshape(-1, *layer_grad.shape[-2:]).sum(axis=0)
         self.bias_weight += new_grad if len(new_grad.shape) == 2 else \
@@ -141,8 +135,8 @@ class Dense(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
         self.opt.reset_grad()
 
 

@@ -18,9 +18,6 @@ class Dropout(Reshape):
         A tuple containing the same shape as `in_size`.
     chance : float
         A float representing the dropout chance for each point in the data array.
-    drop_mask : ndarray, default: None
-        A mask which contains all of the locations that were dropped during the forward pass.
-        Only initialized when a forward pass was performed with training mode set to `True`. 
 
 
     Examples
@@ -44,7 +41,7 @@ class Dropout(Reshape):
         """
         super().__init__(input_size, input_size)
         self.chance = drop_chance
-        self.drop_mask = None
+        self.__drop_mask = None
     
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
@@ -67,9 +64,9 @@ class Dropout(Reshape):
         """ 
         assert data.shape == self.in_size
         if training:
-            self.drop_mask = np.random.uniform(0.0, 1.0, self.in_size) > self.chance
+            self.__drop_mask = np.random.uniform(0.0, 1.0, self.in_size) > self.chance
             mult_comp = (1.0 / 1.0 - self.chance) if self.chance != 1.0 else 1
-            return data * self.drop_mask * mult_comp
+            return data * self.__drop_mask * mult_comp
         return data
     
 
@@ -89,8 +86,8 @@ class Dropout(Reshape):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        assert self.drop_mask is not None
-        return cost_err * self.drop_mask
+        assert self.__drop_mask is not None, "Forward training pass must be performed before backward pass."
+        return cost_err * self.__drop_mask
     
 
     def step(self) -> None:
@@ -100,7 +97,7 @@ class Dropout(Reshape):
 
     def clear_grad(self) -> None:
         """Clears the drop mask from this layer."""
-        self.drop_mask = None
+        self.__drop_mask = None
 
 
     def set_optimizer(self, *_) -> None:

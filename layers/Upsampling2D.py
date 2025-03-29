@@ -12,9 +12,6 @@ class Upsampling2D(Layer):
     ---------
     rate : tuple[int, int]
         The multiplicative size scaling rate of this layer for both dimensions.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -58,7 +55,7 @@ class Upsampling2D(Layer):
             The forward propagated array with a new upsampled size.
         """
         if training:
-            self.last_in = data
+            self.__last_in = data
         return np.kron(data, np.ones(self.rate))
     
 
@@ -78,7 +75,7 @@ class Upsampling2D(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        ret_grad = cost_err.reshape((-1, *self.rate, *self.last_in.shape[-2:])).sum(axis=(-3, -4))
+        ret_grad = cost_err.reshape((-1, *self.rate, *self.__last_in.shape[-2:])).sum(axis=(-3, -4))
         return ret_grad
     
 
@@ -89,7 +86,7 @@ class Upsampling2D(Layer):
 
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass."""
-        self.last_in = None
+        self.__last_in = None
 
 
     def set_optimizer(self, *_) -> None:

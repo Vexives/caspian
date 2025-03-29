@@ -42,12 +42,6 @@ class Bilinear(Dense):
         The given activation class which performs the desired non-linear transform to the data.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -129,8 +123,8 @@ class Bilinear(Dense):
                                        self.layer_weight, 
                                        data_2) + self.bias_weight)
         if training:
-            self.last_in = (data_1, data_2)
-            self.last_out = new_val
+            self.__last_in = (data_1, data_2)
+            self.__last_out = new_val
         return new_val
     
     
@@ -152,12 +146,12 @@ class Bilinear(Dense):
             same shapes as this layer's input shapes. The first gradient corresponds to the first input,
             and the second gradient corresponds to the second input.
         """
-        new_err = cost_err * self.funct(self.last_out, True)
+        new_err = cost_err * self.funct(self.__last_out, True)
         new_grad = self.opt(new_err)
         layer_grad = np.einsum("...o,...i,...j->...oij", 
                                new_grad, 
-                               self.last_in[0], 
-                               self.last_in[1])
+                               self.__last_in[0], 
+                               self.__last_in[1])
         
         first_ret_grad = np.einsum("...o,oij->...i", new_err, self.layer_weight)
         second_ret_grad = np.einsum("...o,oij->...j", new_err, self.layer_weight)
@@ -175,8 +169,8 @@ class Bilinear(Dense):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
         self.opt.reset_grad()
 
 

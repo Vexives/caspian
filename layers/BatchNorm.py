@@ -41,18 +41,6 @@ class BatchNorm(Layer):
     running_var : ndarray
         A single dimensional array of values that correspond to the running variance values calculated
         during the learning phase. Will be set to `None` if `momentum` is `None`.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_m : ndarray | None
-        A saved value for the last mean, only stored if `training` is set to `True`
-        during a forward pass.
-    last_v : ndarray | None
-        A saved value for the last variance, only stored if `training` is set to `True`
-        during a forward pass.
-    norm_res : ndarray | None
-        A saved value for the last normalized result, only stored if `training` is set to `True`
-        during a forward pass. Does not include the result of the applied gamma & beta (if applicable).
 
 
     Examples
@@ -145,10 +133,10 @@ class BatchNorm(Layer):
             
             new_data = ((shaped_data - batch_mean) / (np.sqrt(batch_var + self.var_eps)))
             
-            self.last_in = shaped_data
-            self.norm_res = new_data
-            self.last_v = batch_var
-            self.last_m = batch_mean
+            self.__last_in = shaped_data
+            self.__norm_res = new_data
+            self.__last_v = batch_var
+            self.__last_m = batch_mean
         else:
             if self.momentum:
                 batch_mean = self.running_mean
@@ -188,14 +176,14 @@ class BatchNorm(Layer):
         opt_err = self.opt.process_grad(shaped_err)                   #Gamma/Beta update gradient with optimizer
 
         elem_num = 1.0 / shaped_err.shape[0]
-        d_m = (shaped_err * (-self.last_v)).mean(axis=0)
-        d_v = (shaped_err * (self.last_in - self.last_m)).sum(axis=0) * (-0.5 * (self.last_v + self.var_eps)**-1.5)
+        d_m = (shaped_err * (-self.__last_v)).mean(axis=0)
+        d_v = (shaped_err * (self.__last_in - self.__last_m)).sum(axis=0) * (-0.5 * (self.__last_v + self.var_eps)**-1.5)
 
-        ret_grad = shaped_err * self.last_v + d_v * 2 * (self.last_in - self.last_m) * elem_num \
+        ret_grad = shaped_err * self.__last_v + d_v * 2 * (self.__last_in - self.__last_m) * elem_num \
                    + d_m * elem_num
         
         if self.gamma is not None:
-            self.gamma += (opt_err * self.norm_res).sum(axis=0)
+            self.gamma += (opt_err * self.__norm_res).sum(axis=0)
     
         if self.beta is not None:
             self.beta += opt_err.sum(axis=0)
@@ -209,10 +197,10 @@ class BatchNorm(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.mean = None
-        self.var = None
-        self.norm_res = None
+        self.__last_in = None
+        self.__last_m = None
+        self.__last_v = None
+        self.__norm_res = None
         self.opt.reset_grad()
 
 

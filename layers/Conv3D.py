@@ -50,11 +50,6 @@ class Conv3D(Layer):
     pad_front, pad_back : int
         The number of data points to be added to the front and back sides of the data, respectively.
         Corresponds to each half of `pad_depth`, with `pad_front` being the first to increment.
-    window_shape : tuple[int, int, int, int, int, int, int, int]
-        The shape that the data will take whenever a strided view is created for the forward pass.
-    grad_shape : tuple[int, int, int, int, int, int, int, int]
-        The shape that the data will take whenever a strided view is created for the backward pass. 
-        Some dimensions from the `window_shape` variable are transposed.
     kernel_weights : ndarray
         A set of trainable kernel weights which are applied to each partition extracted from the 
         given input. Has the shape `(F, C, kD, kH, kW)`, with `kD`, `kH`, `kW` being the kernel
@@ -66,12 +61,6 @@ class Conv3D(Layer):
         A boolean which determines if the bias weights are initialized, used, and trained.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -133,7 +122,7 @@ class Conv3D(Layer):
         super().__init__(in_size, out_size)
 
         #Strides and Window Shapes
-        self.window_shape = (layers, 
+        self.__window_shape = (layers, 
                              self.in_size[0], 
                              self.kernel_depth,
                              self.kernel_height, 
@@ -141,7 +130,7 @@ class Conv3D(Layer):
                              self.out_size[1], 
                              self.out_size[2],
                              self.out_size[3]) #(F, C, D, H, W, out_D, out_H, out_W)
-        self.grad_shape = (self.in_size[0], 
+        self.__grad_shape = (self.in_size[0], 
                            layers, 
                            self.kernel_depth,
                            self.kernel_height, 
@@ -149,7 +138,7 @@ class Conv3D(Layer):
                            self.in_size[1] + self.pad_depth, 
                            self.in_size[2] + self.pad_height,
                            self.in_size[3] + self.pad_width) #(C, F, D, H, in_D + pad, in_H + pad, in_W + pad)
-        self.dx_shape = (self.out_size[0],
+        self.__dx_shape = (self.out_size[0],
                          self.out_size[1] + (self.out_size[1]-1) * (self.stride_d-1),
                          self.out_size[2] + (self.out_size[2]-1) * (self.stride_h-1),
                          self.out_size[3] + (self.out_size[3]-1) * (self.stride_w-1)) #(F, out_D + dilate, out_H + dilate, out_W + dilate)
@@ -199,7 +188,7 @@ class Conv3D(Layer):
                         self.stride_d * new_data.strides[2], 
                         self.stride_h * new_data.strides[3],
                         self.stride_w * new_data.strides[4])
-        data_win_shape = (new_data.shape[0],) + self.window_shape
+        data_win_shape = (new_data.shape[0],) + self.__window_shape
 
         #Sliding windows and convolution multiplication
         sliding_view = np.lib.stride_tricks.as_strided(new_data, 
@@ -209,8 +198,8 @@ class Conv3D(Layer):
 
         last = self.funct(conv_val + self.bias_weights if self.use_bias else conv_val)
         if training:
-            self.last_in = new_data
-            self.last_out = last
+            self.__last_in = new_data
+            self.__last_out = last
 
         if len(data.shape) < 5:
             last = last.squeeze(axis=0)
@@ -235,28 +224,28 @@ class Conv3D(Layer):
             same shape as this layer's input shape.
         """
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 5 else cost_err   #Enforce batches.
-        new_err = new_err * self.funct(self.last_out, True)
+        new_err = new_err * self.funct(self.__last_out, True)
         opt_grad = self.opt.process_grad(new_err)
 
-        main_strides = (self.last_in.strides[0],
+        main_strides = (self.__last_in.strides[0],
                         0, 
-                        self.last_in.strides[1], 
-                        self.last_in.strides[2], 
-                        self.last_in.strides[3],
-                        self.last_in.strides[4], 
-                        self.stride_d * self.last_in.strides[2], 
-                        self.stride_h * self.last_in.strides[3],
-                        self.stride_w * self.last_in.strides[4])
-        main_win_shape = (new_err.shape[0],) + self.window_shape
+                        self.__last_in.strides[1], 
+                        self.__last_in.strides[2], 
+                        self.__last_in.strides[3],
+                        self.__last_in.strides[4], 
+                        self.stride_d * self.__last_in.strides[2], 
+                        self.stride_h * self.__last_in.strides[3],
+                        self.stride_w * self.__last_in.strides[4])
+        main_win_shape = (new_err.shape[0],) + self.__window_shape
 
         #Input gradient
         flipped_weights = np.flip(self.kernel_weights, axis=(2, 3, 4))
-        dx_ins = dilate_array(new_err, (new_err.shape[0],) + self.dx_shape, 
+        dx_ins = dilate_array(new_err, (new_err.shape[0],) + self.__dx_shape, 
                               (self.stride_d, self.stride_h, self.stride_w))
 
-        p_d = self.last_in.shape[2] + self.kernel_depth - (dx_ins.shape[2] + 1)
-        p_h = self.last_in.shape[3] + self.kernel_height - (dx_ins.shape[3] + 1)
-        p_w = self.last_in.shape[4] + self.kernel_width - (dx_ins.shape[4] + 1)
+        p_d = self.__last_in.shape[2] + self.kernel_depth - (dx_ins.shape[2] + 1)
+        p_h = self.__last_in.shape[3] + self.kernel_height - (dx_ins.shape[3] + 1)
+        p_w = self.__last_in.shape[4] + self.kernel_width - (dx_ins.shape[4] + 1)
         pad_grad = np.pad(dx_ins, ((0, 0), (0, 0),
                                    (p_d // 2, (p_d + 1) // 2), 
                                    (p_h // 2, (p_h + 1) // 2), 
@@ -272,7 +261,7 @@ class Conv3D(Layer):
                         pad_grad.strides[2], 
                         pad_grad.strides[3],
                         pad_grad.strides[4])
-        grad_win_shape = (new_err.shape[0],) + self.grad_shape
+        grad_win_shape = (new_err.shape[0],) + self.__grad_shape
         
         grad_window = np.lib.stride_tricks.as_strided(pad_grad, 
                                                       grad_win_shape, 
@@ -283,7 +272,7 @@ class Conv3D(Layer):
                                   self.pad_left:(-self.pad_right or None)]
 
         #Updating weights
-        main_window = np.lib.stride_tricks.as_strided(self.last_in, 
+        main_window = np.lib.stride_tricks.as_strided(self.__last_in, 
                                                       main_win_shape, 
                                                       main_strides)
         self.kernel_weights += np.einsum("nfcdhwxyz,nfxyz->fcdhw", main_window, opt_grad)
@@ -303,8 +292,8 @@ class Conv3D(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
         self.opt.reset_grad()
 
 

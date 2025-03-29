@@ -23,9 +23,6 @@ class Embedding(Layer):
         after each backward pass.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -77,7 +74,7 @@ class Embedding(Layer):
             The forward propagated array with added embedding information.
         """
         if training:
-            self.last_in = data
+            self.__last_in = data
         return data @ self.embed_table
     
 
@@ -99,7 +96,7 @@ class Embedding(Layer):
             same shape as this layer's input shape.
         """
         ret_grad = self.embed_table.T @ cost_err
-        self.embed_table += self.last_in.T @ self.opt.process_grad(cost_err)
+        self.embed_table += self.__last_in.T @ self.opt.process_grad(cost_err)
         return ret_grad
     
 
@@ -110,7 +107,7 @@ class Embedding(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
+        self.__last_in = None
         self.opt.reset_grad()
 
 

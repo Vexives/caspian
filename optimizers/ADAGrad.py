@@ -17,14 +17,11 @@ class ADAGrad(Optimizer):
         The initial learn rate that is given to this layer's scheduler.
     scheduler : Scheduler
         The learn rate scheduler that this optimizer wraps.
-    conc_grad : float | ndarray
-        The decaying concentrated gradient of prior gradient inputs. Initialized to 0.0 on first
-        iteration.
     """
     def __init__(self, eps: float = 1e-8, learn_rate: float = 0.01,
                  sched: Scheduler = SchedulerLR()) -> None:
         super().__init__(learn_rate, sched)
-        self.conc_grad = 0.0
+        self.__conc_grad = 0.0
         self.eps = eps
     
     def __repr__(self) -> str:
@@ -32,15 +29,15 @@ class ADAGrad(Optimizer):
 
     def process_grad(self, grad: np.ndarray) -> np.ndarray:
         learn_rate = self.scheduler(self.learn_rate)
-        self.conc_grad += grad**2
-        new_grad = (-learn_rate * grad) / (np.sqrt(self.conc_grad + self.eps))
+        self.__conc_grad += grad**2
+        new_grad = (-learn_rate * grad) / (np.sqrt(self.__conc_grad + self.eps))
         return new_grad
     
     def step(self) -> None:
         self.scheduler.step()
     
     def reset_grad(self) -> None:
-        self.conc_grad = 0.0
+        self.__conc_grad = 0.0
         self.scheduler.reset()
 
     def deepcopy(self) -> 'ADAGrad':

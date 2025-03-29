@@ -20,9 +20,6 @@ class RMSProp(Optimizer):
         The initial learn rate that is given to this layer's scheduler.
     scheduler : Scheduler
         The learn rate scheduler that this optimizer wraps.
-    conc_grad : float | ndarray
-        The decaying concentrated gradient of prior gradient inputs. Initialized to 0.0 on first
-        iteration.
     """
     def __init__(self, decay: float = 0.9, eps: float = 1e-8,
                  learn_rate: float = 0.01, 
@@ -30,22 +27,22 @@ class RMSProp(Optimizer):
         super().__init__(learn_rate, sched)
         self.decay = decay
         self.eps = eps
-        self.conc_grad = 0.0
+        self.__conc_grad = 0.0
     
     def __repr__(self) -> str:
         return f"RMSProp/{self.decay}/{self.eps}/{self.learn_rate}/" + repr(self.scheduler)
 
     def process_grad(self, grad: np.ndarray) -> np.ndarray:
         learn_rate = self.scheduler(self.learn_rate)
-        self.conc_grad = (self.decay * self.conc_grad) + (1 - self.decay) * grad**2
-        new_grad = (-learn_rate * grad) / (np.sqrt(self.conc_grad + self.eps))
+        self.__conc_grad = (self.decay * self.__conc_grad) + (1 - self.decay) * grad**2
+        new_grad = (-learn_rate * grad) / (np.sqrt(self.__conc_grad + self.eps))
         return new_grad
     
     def step(self) -> None:
         self.scheduler.step()
     
     def reset_grad(self) -> None:
-        self.conc_grad = 0.0
+        self.__conc_grad = 0.0
         self.scheduler.reset()
 
     def deepcopy(self) -> 'RMSProp':

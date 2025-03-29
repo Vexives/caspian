@@ -44,11 +44,6 @@ class Conv1DTranspose(Conv1D):
     out_pad_left, out_pad_right : int
         The number of data points to be added to the left and right sides of the output, respectively.
         Corresponds to each half of `out_padding_all`, with `out_pad_left` being the first to increment.
-    window_shape : tuple[int, int, int, int]
-        The shape that the data will take whenever a strided view is created for the forward pass.
-    grad_shape : tuple[int, int, int, int]
-        The shape that the data will take whenever a strided view is created for the backward pass. 
-        Some dimensions from the `window_shape` variable are transposed.
     kernel_weights : ndarray
         A set of trainable kernel weights which are applied to each partition extracted from the 
         given input. Has the shape `(F, C, kW)`, with `kW` being the kernel width.
@@ -59,12 +54,6 @@ class Conv1DTranspose(Conv1D):
         A boolean which determines if the bias weights are initialized, used, and trained.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -126,15 +115,15 @@ class Conv1DTranspose(Conv1D):
                          max(((self.in_size[1] - 1) * strides) + out_padding + kernel_size - padding, 0))
 
         #Window Shapes
-        self.window_shape = (layers, 
+        self.__window_shape = (layers, 
                              self.in_size[0], 
                              kernel_size, 
                              self.out_size[1] + padding - out_padding) #(F, C, K, out_S + pad)
-        self.grad_shape = (self.in_size[0], 
+        self.__grad_shape = (self.in_size[0], 
                            layers, 
                            kernel_size, 
                            self.in_size[1]) #(C, F, K, in_S)
-        self.dx_shape = (self.in_size[0],
+        self.__dx_shape = (self.in_size[0],
                          self.in_size[1] + (self.in_size[1]-1) * (strides-1)) #(C, in_S + dilate)
 
         #Other params
@@ -170,7 +159,7 @@ class Conv1DTranspose(Conv1D):
         new_data = np.expand_dims(data, axis=0) if len(data.shape) < 3 else data    #Enforce batches.
 
         #Initial dilation of array
-        dil_data = dilate_array(new_data, (new_data.shape[0],) + self.dx_shape, (self.strides,))
+        dil_data = dilate_array(new_data, (new_data.shape[0],) + self.__dx_shape, (self.strides,))
 
         #Padding, shape, and strides calculation
         p_x = self.out_size[1] - self.out_padding_all + self.padding_all + self.kernel_size - (dil_data.shape[2] + 1)
@@ -181,7 +170,7 @@ class Conv1DTranspose(Conv1D):
                        pad_data.strides[1], 
                        pad_data.strides[2], 
                        pad_data.strides[2])
-        data_win_shape = (new_data.shape[0],) + self.window_shape
+        data_win_shape = (new_data.shape[0],) + self.__window_shape
 
         #Stride windows and summation
         sliding_view = np.lib.stride_tricks.as_strided(pad_data, 
@@ -196,8 +185,8 @@ class Conv1DTranspose(Conv1D):
                              (self.out_pad_left, self.out_pad_right)), mode="constant")
 
         if training:
-            self.last_in = dil_data
-            self.last_out = last
+            self.__last_in = dil_data
+            self.__last_out = last
 
         if len(data.shape) < 3:
             last = last.squeeze(axis=0)
@@ -224,7 +213,7 @@ class Conv1DTranspose(Conv1D):
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
 
         #Optimized & standard gradient preparation
-        new_err = new_err * self.funct(self.last_out, True)         # Gradient for backward pass
+        new_err = new_err * self.funct(self.__last_out, True)         # Gradient for backward pass
         opt_grad = self.opt.process_grad(new_err)                   # Gradient for updating weights
 
         new_err = new_err[:, :, self.out_pad_left:(-self.out_pad_right or None)]
@@ -241,7 +230,7 @@ class Conv1DTranspose(Conv1D):
                        err_pad.strides[1], 
                        err_pad.strides[2], 
                        self.strides * err_pad.strides[2])
-        grad_win_shape = (new_err.shape[0],) + self.grad_shape
+        grad_win_shape = (new_err.shape[0],) + self.__grad_shape
 
         err_view = np.lib.stride_tricks.as_strided(err_pad, 
                                                    shape=grad_win_shape, 
@@ -249,15 +238,15 @@ class Conv1DTranspose(Conv1D):
         ret_grad = np.einsum("ncfkx,fck->ncx", err_view, flipped_weights)
 
         #Weights gradient
-        p_x = self.out_size[1] + self.padding_all + self.kernel_size - (self.last_in.shape[2] + 1)
-        opt_pad = np.pad(self.last_in, ((0, 0), (0, 0),
+        p_x = self.out_size[1] + self.padding_all + self.kernel_size - (self.__last_in.shape[2] + 1)
+        opt_pad = np.pad(self.__last_in, ((0, 0), (0, 0),
                                         (p_x // 2, (p_x + 1) // 2)), mode="constant")
         opt_strides = (opt_pad.strides[0],
                        0, 
                        opt_pad.strides[1], 
                        opt_pad.strides[2], 
                        opt_pad.strides[2])
-        opt_win_shape = (new_err.shape[0],) + self.window_shape
+        opt_win_shape = (new_err.shape[0],) + self.__window_shape
 
         opt_view = np.lib.stride_tricks.as_strided(opt_pad, 
                                                    shape=opt_win_shape, 
@@ -279,8 +268,8 @@ class Conv1DTranspose(Conv1D):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
         self.opt.reset_grad()
     
 

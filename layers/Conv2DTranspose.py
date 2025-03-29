@@ -53,11 +53,6 @@ class Conv2DTranspose(Conv2D):
     out_pad_top, out_pad_bottom : int
         The number of data points to be added to the left and right sides of the output, respectively.
         Corresponds to each half of `out_pad_height`, with `out_pad_top` being the first to increment.
-    window_shape : tuple[int, int, int, int, int, int, int]
-        The shape that the data will take whenever a strided view is created for the forward pass.
-    grad_shape : tuple[int, int, int, int, int, int, int]
-        The shape that the data will take whenever a strided view is created for the backward pass. 
-        Some dimensions from the `window_shape` variable are transposed.
     kernel_weights : ndarray
         A set of trainable kernel weights which are applied to each partition extracted from the 
         given input. Has the shape `(F, C, kH, kW)`, with `kH`, `kW` being the kernel height and
@@ -69,12 +64,6 @@ class Conv2DTranspose(Conv2D):
         A boolean which determines if the bias weights are initialized, used, and trained.
     opt : Optimizer
         The provided optimizer which modifies the learning gradient before updating weights.
-    last_in : ndarray | None
-        A saved value for the last input, only stored if `training` is set to `True`
-        during a forward pass.
-    last_out : ndarray | None
-        A saved value for the last output, only stored if `training` is set to `True`
-        during a forward pass.
 
 
     Examples
@@ -143,19 +132,19 @@ class Conv2DTranspose(Conv2D):
                          max(((self.in_size[2] - 1) * self.stride_w) + self.out_pad_width + self.kernel_width - self.pad_width, 0))
         
         #Strides and Window Shapes
-        self.window_shape = (layers, 
+        self.__window_shape = (layers, 
                              self.in_size[0], 
                              self.kernel_height, 
                              self.kernel_width, 
                              self.out_size[1] + self.pad_height - self.out_pad_height, 
                              self.out_size[2] + self.pad_width - self.out_pad_width) #(F, C, H, W, out_H + pad, out_W + pad)
-        self.grad_shape = (self.in_size[0], 
+        self.__grad_shape = (self.in_size[0], 
                            layers, 
                            self.kernel_height, 
                            self.kernel_width, 
                            self.in_size[1], 
                            self.in_size[2]) #(C, F, H, W, in_H, in_W)
-        self.dx_shape = (self.in_size[0],
+        self.__dx_shape = (self.in_size[0],
                          self.in_size[1] + (self.in_size[1]-1) * (self.stride_h-1),
                          self.in_size[2] + (self.in_size[2]-1) * (self.stride_w-1)) #(C, in_H + dilate, in_W + dilate)
 
@@ -189,7 +178,7 @@ class Conv2DTranspose(Conv2D):
         new_data = np.expand_dims(data, axis=0) if len(data.shape) < 4 else data    #Enforce batches.
 
         #Initial dilation of array
-        dil_data = dilate_array(new_data, (new_data.shape[0],) + self.dx_shape, (self.stride_h, self.stride_w))
+        dil_data = dilate_array(new_data, (new_data.shape[0],) + self.__dx_shape, (self.stride_h, self.stride_w))
 
         #Extra padding calculation & strides
         p_h = self.out_size[1] - self.out_pad_height + self.pad_height + self.kernel_height - (dil_data.shape[2] + 1)
@@ -205,7 +194,7 @@ class Conv2DTranspose(Conv2D):
                        pad_data.strides[3], 
                        pad_data.strides[2], 
                        pad_data.strides[3])
-        data_win_shape = (new_data.shape[0],) + self.window_shape
+        data_win_shape = (new_data.shape[0],) + self.__window_shape
         
         #Strided windows and padding deletion
         conv_window = np.lib.stride_tricks.as_strided(pad_data, 
@@ -223,8 +212,8 @@ class Conv2DTranspose(Conv2D):
                              (self.out_pad_left, self.out_pad_right)), mode="constant")
         
         if training:
-            self.last_in = dil_data
-            self.last_out = last
+            self.__last_in = dil_data
+            self.__last_out = last
 
         if len(data.shape) < 4:
             last = last.squeeze(axis=0)
@@ -250,7 +239,7 @@ class Conv2DTranspose(Conv2D):
         """
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 4 else cost_err   #Enforce batches.
 
-        new_err = new_err * self.funct(self.last_out, True)         # Gradient for backward pass
+        new_err = new_err * self.funct(self.__last_out, True)         # Gradient for backward pass
         opt_grad = self.opt.process_grad(new_err)                   # Gradient for updating weights
 
         new_err = new_err[:, :, 
@@ -275,7 +264,7 @@ class Conv2DTranspose(Conv2D):
                        err_pad.strides[3], 
                        self.stride_h * err_pad.strides[2], 
                        self.stride_w * err_pad.strides[3])
-        grad_win_shape = (new_err.shape[0],) + self.grad_shape
+        grad_win_shape = (new_err.shape[0],) + self.__grad_shape
 
         err_view = np.lib.stride_tricks.as_strided(err_pad, 
                                                    shape=grad_win_shape, 
@@ -283,9 +272,9 @@ class Conv2DTranspose(Conv2D):
         ret_grad = np.einsum("ncfhwxy,fchw->ncxy", err_view, flipped_weights)
 
         #Weights gradient
-        p_h = self.out_size[1] + self.pad_height + self.kernel_height - (self.last_in.shape[2] + 1)
-        p_w = self.out_size[2] + self.pad_width + self.kernel_width - (self.last_in.shape[3] + 1)
-        opt_pad = np.pad(self.last_in, ((0, 0), (0, 0),
+        p_h = self.out_size[1] + self.pad_height + self.kernel_height - (self.__last_in.shape[2] + 1)
+        p_w = self.out_size[2] + self.pad_width + self.kernel_width - (self.__last_in.shape[3] + 1)
+        opt_pad = np.pad(self.__last_in, ((0, 0), (0, 0),
                                     (p_h // 2, (p_h + 1) // 2), 
                                     (p_w // 2, (p_w + 1) // 2)), mode="constant")
         opt_strides = (opt_pad.strides[0],
@@ -295,7 +284,7 @@ class Conv2DTranspose(Conv2D):
                        opt_pad.strides[3], 
                        opt_pad.strides[2], 
                        opt_pad.strides[3])
-        opt_win_shape = (new_err.shape[0],) + self.window_shape
+        opt_win_shape = (new_err.shape[0],) + self.__window_shape
 
         opt_view = np.lib.stride_tricks.as_strided(opt_pad, 
                                                    shape=opt_win_shape, 
@@ -317,8 +306,8 @@ class Conv2DTranspose(Conv2D):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.last_in = None
-        self.last_out = None
+        self.__last_in = None
+        self.__last_out = None
         self.opt.reset_grad()
     
 

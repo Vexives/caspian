@@ -285,7 +285,7 @@ print(xt.shape)
 print(yt.shape)
 
 #Create the model to be trained
-optim = StandardGD(0.0005)
+optim = StandardGD(0.001)
 
 d1 = Conv2D(Sigmoid(), 32, 3, (1, 28, 28))
 d2 = Pooling2D(Maximum(), 2, (32, 26, 26), 2)

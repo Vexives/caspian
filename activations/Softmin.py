@@ -18,8 +18,6 @@ class Softmin(Activation):
     ----------
     axis : int
         The axis at which the softmax function is performed.
-    last : ndarray | None
-        The last array that was processed by the forward pass.
     """
     def __init__(self, axis: int = -1):
         self.axis = axis
@@ -30,8 +28,7 @@ class Softmin(Activation):
     def forward(self, data: np.ndarray) -> np.ndarray:
         data = -data
         ex = np.exp(data - np.max(data, axis=self.axis, keepdims=True))
-        self.last = ex / ex.sum(axis=self.axis, keepdims=True)
-        return self.last
+        return ex / ex.sum(axis=self.axis, keepdims=True)
     
     def backward(self, data: np.ndarray) -> np.ndarray:
         return data
