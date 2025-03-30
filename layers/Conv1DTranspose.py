@@ -1,6 +1,6 @@
 from caspian.cudalib import np
 from . import Conv1D
-from caspian.optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 from caspian.activations import Activation, parse_act_info
 from caspian.utilities import dilate_array
 
@@ -312,7 +312,8 @@ class Conv1DTranspose(Conv1D):
             If no file is specified, a string containing all information about this model is returned.
         """
         write_ret_str = f"Conv1DTranspose\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
-                        f"\u00A0{self.kernel_size}\u00A0{self.strides}\u00A0{self.padding_all}\u00A0{self.out_padding_all}\u00A0{int(self.use_bias)}\n" + \
+                        f"\u00A0{self.kernel_size}\u00A0{self.strides}\u00A0{self.padding_all}\u00A0{self.out_padding_all}" + \
+                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
@@ -361,14 +362,18 @@ class Conv1DTranspose(Conv1D):
             kernel_size = tuple(map(int, data_arr[3].split()[1:]))
             kernels = np.array(list(map(int, data_arr[4].strip().split()))).reshape(kernel_size)
 
-            new_neuron = Conv1DTranspose(parse_act_info(prop_info[1]), 
+            act = parse_act_info(prop_info[1])
+            opt = parse_opt_info(prop_info[-1])
+
+            new_neuron = Conv1DTranspose(act, 
                                          int(prop_info[2]), 
                                          int(prop_info[3]), 
                                          tuple(map(int, input_info)), 
                                          int(prop_info[4]), 
                                          int(prop_info[5]), 
                                          int(prop_info[6]), 
-                                         bool(prop_info[7]))
+                                         bool(prop_info[7]),
+                                         opt)
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels
             return new_neuron

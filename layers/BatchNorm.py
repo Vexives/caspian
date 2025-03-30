@@ -1,6 +1,6 @@
 from caspian.cudalib import np
 from . import Layer
-from caspian.optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 
 class BatchNorm(Layer):
     """
@@ -246,7 +246,7 @@ class BatchNorm(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"BatchNorm\u00A0{self.channels}\u00A0{self.dims}\u00A0{self.axis}" + \
+        write_ret_str = f"BatchNorm\u00A0{self.channels}\u00A0{self.dims}\u00A0{self.axis}\u00A0{repr(self.opt)}" + \
                         f"\nPARAMS\u00A0{self.momentum}\u00A0{self.var_eps}"
         write_ret_str += f"\nGAMMA\u00A0" + " ".join(list(map(str, self.gamma.flatten().tolist()))) if self.gamma is not None else "\nGAMMA\u00A0None"
         write_ret_str += f"\nBETA\u00A0" + " ".join(list(map(str, self.beta.flatten().tolist()))) if self.beta is not None else "\nBETA\u00A0None"
@@ -288,7 +288,9 @@ class BatchNorm(Layer):
         """
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
-            channels, dims, axis = tuple(map(int, data_arr[0].split("\u00A0")[1:]))
+            gen_info = data_arr[0].split("\u00A0")[1:]
+            channels, dims, axis = tuple(map(int, gen_info[:-1]))
+            opt = parse_opt_info(gen_info[-1])
             momentum, eps = tuple(map(float, data_arr[1].split("\u00A0")[1:]))
 
             gamma_data, beta_data = data_arr[2].split("\u00A0"), data_arr[3].split("\u00A0")
@@ -302,7 +304,7 @@ class BatchNorm(Layer):
             new_neuron = BatchNorm(channels, dims, 
                                    False if gamma is None else True,
                                    False if beta is None else True, 
-                                   momentum, axis, eps)
+                                   momentum, axis, eps, opt)
             new_neuron.gamma = gamma
             new_neuron.beta = beta
             new_neuron.running_mean = r_mean

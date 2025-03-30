@@ -1,6 +1,6 @@
 from caspian.cudalib import np
 from . import Layer
-from caspian.optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 from caspian.activations import Activation, parse_act_info
 
 class Dense(Layer):
@@ -177,7 +177,7 @@ class Dense(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Dense\u00A0{repr(self.funct)}" + \
+        write_ret_str = f"Dense\u00A0{repr(self.funct)}\u00A0{repr(self.opt)}" + \
                         "\nWEIGHTS\u00A0" + " ".join(list(map(str, self.layer_weight.flatten().tolist()))) + \
                         "\nBIAS\u00A0" + " ".join(list(map(str, self.bias_weight.flatten().tolist()))) + \
                         "\nSIZES\u00A0" + " ".join(list(map(str, self.in_size))) + f"\u00A0{self.out_size[-1]}\n\u00A0" 
@@ -220,12 +220,14 @@ class Dense(Layer):
 
             in_size = tuple(map(int, size_info[1].split()))
             out_size = int(size_info[2])
+            opt = parse_opt_info(prop_info[-1])
+            act = parse_act_info(prop_info[1])
 
             weight_info, bias_info = data_arr[1].split("\u00A0")[1], data_arr[2].split("\u00A0")[1]
             weights = np.array(list(map(float, weight_info.split()))).reshape((out_size, in_size[-1]))
             biases = np.array(list(map(float, bias_info.split()))).reshape((out_size, 1))
 
-            new_neuron = Dense(parse_act_info(prop_info[1]), in_size, out_size)
+            new_neuron = Dense(act, in_size, out_size, opt)
             new_neuron.layer_weight = weights
             new_neuron.bias_weight = biases
             return new_neuron

@@ -1,6 +1,6 @@
 from caspian.cudalib import np
 from . import Dense
-from caspian.optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 from caspian.activations import Activation, parse_act_info
 
 class Bilinear(Dense):
@@ -211,14 +211,12 @@ class Bilinear(Dense):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Bilinear\u00A0{repr(self.funct)}\n" + \
-                        "".join([" ".join(list(map(str, row.tolist()))) + "\n" for row in 
-                                          self.layer_weight.reshape(-1, self.layer_weight.shape[-1])]) + \
-                        "BIAS\n" + \
-                        " ".join(list(map(str, self.bias_weight.flatten().tolist()))) + "\n" \
-                        "SIZES\u00A0" + " ".join(list(map(str, self.in_size[0]))) + "\u00A0" + \
-                                        " ".join(list(map(str, self.in_size[1]))) + "\u00A0" + \
-                                        f"{self.out_size[-1]}\n\u00A0" 
+        write_ret_str = f"Bilinear\u00A0{repr(self.funct)}\u00A0{repr(self.opt)}" + \
+                        "\nWEIGHTS\u00A0" + " ".join(list(map(str, self.layer_weight.flatten().tolist()))) + \
+                        "\nBIAS\u00A0" + " ".join(list(map(str, self.bias_weight.flatten().tolist()))) + \
+                        "\nSIZES\u00A0" + " ".join(list(map(str, self.in_size[0]))) + "\u00A0" + \
+                                          " ".join(list(map(str, self.in_size[1]))) + "\u00A0" + \
+                                          f"{self.out_size[-1]}\n\u00A0" 
         if not filename:
             return write_ret_str
         if filename.find(".cspn") == -1:
@@ -255,26 +253,20 @@ class Bilinear(Dense):
             data_arr = handled_str.splitlines()
             prop_info = data_arr[0].split("\u00A0")
             size_info = data_arr[-2].split("\u00A0")
+
             in_size_1 = tuple(map(int, size_info[1].split()))
             in_size_2 = tuple(map(int, size_info[2].split()))
             out_size = int(size_info[3])
-            new_neuron = Bilinear(parse_act_info(prop_info[1]), in_size_1, in_size_2, out_size)
+            opt = parse_opt_info(prop_info[-1])
+            act = parse_act_info(prop_info[1])
 
-            weights = []
-            biases = []
-            bias_bool = False
-            for line in data_arr[1:]:
-                if line.find("BIAS") != -1:
-                    bias_bool = True
-                    continue
-                if line.find("SIZES") != -1:
-                    new_neuron.layer_weight = np.array(weights, dtype=float).reshape(new_neuron.layer_weight.shape)
-                    new_neuron.bias_weight = np.array(biases, dtype=float).reshape(-1, 1)
-                    break
-                if not bias_bool:
-                    weights.append(list(map(float, line.split())))
-                    continue
-                biases.append(list(map(float, line.split())))
+            weight_info, bias_info = data_arr[1].split("\u00A0")[1], data_arr[2].split("\u00A0")[1]
+            weights = np.array(list(map(float, weight_info.split()))).reshape((out_size, in_size_1[-1], in_size_2[-1]))
+            biases = np.array(list(map(float, bias_info.split()))).reshape((out_size,))
+
+            new_neuron = Bilinear(act, in_size_1, in_size_2, out_size, opt)
+            new_neuron.layer_weight = weights
+            new_neuron.bias_weight = biases
             return new_neuron
 
         if file_load:

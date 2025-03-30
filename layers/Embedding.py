@@ -1,6 +1,6 @@
 from caspian.cudalib import np
 from . import Layer
-from caspian.optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 
 class Embedding(Layer):
     """
@@ -147,7 +147,7 @@ class Embedding(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Embedding\u00A0{self.v_len}\u00A0{self.e_len}\n" + \
+        write_ret_str = f"Embedding\u00A0{self.v_len}\u00A0{self.e_len}\u00A0{repr(self.opt)}\n" + \
                         " ".join(list(map(str, self.embed_table.flatten().tolist()))) + "\n\u00A0" 
         if not filename:
             return write_ret_str
@@ -188,8 +188,9 @@ class Embedding(Layer):
 
             v_len, e_len = int(prop_info[1]), int(prop_info[2])
             table = np.array(list(map(float, weight_info.split()))).reshape((v_len, e_len))
+            opt = parse_opt_info(prop_info[-1])
 
-            new_neuron = Embedding(v_len, e_len)
+            new_neuron = Embedding(v_len, e_len, opt)
             new_neuron.embed_table = table
             return new_neuron
 

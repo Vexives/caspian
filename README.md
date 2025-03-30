@@ -322,6 +322,73 @@ for ep in range(50):
 The example above uses all of the tools that were created to stochastically train a basic neural network that can recognize digits 0 through 9 on a 28x28 size image. Improvements and changes can be made to the model for greater accuracy using other tools in the Caspian library.
 
 
+### Saving and Loading Layers:
+
+> [!NOTE]
+> Saving and loading models may change in the future at an unknown time. In the event that it is changed, previously formatted `.cspn` files will no longer work with new ones. If this occurs, then it will be specified in the update that does so.
+
+Once a model has been trained (or in the process of training), each layer can be exported and loaded at a different time. Layers, activations, pooling functions, optimizers, and schedulers all have methods which allow them to be encoded into strings and/or saved to files (of type `.cspn`). 
+
+
+#### Saving
+
+Layers can be encoded into a string or saved to a file using the `save_to_file()` method, as shown here:
+```python
+d1 = Conv2D(ReLU(), 32, 3, (1, 28, 28))
+d1.save_to_file("layer1.cspn")
+```
+If the file name is not specified and no parameters are given to this method, then a string is returned which contains the information of that layer. This includes the activation or pooling function, optimizer, and scheduler of that layer (if any are applicable).
+
+For other tools like optimizers, schedulers, or functions, the `repr()` function is used in place of a set saving method. It returns a string with the name of the class and all initialized attributes of the object in the order of the initialization function with `/` as a separator (except for schedulers, which use `:`). A quick example:
+```python
+opt = ADAM(learn_rate = 0.001, sched = StepLR(10))
+opt_info = repr(opt)
+#Returns "ADAM/0.9/0.99/1e-8/0.001/StepLR:10:0.1"
+```
+
+
+#### Loading
+
+Once a layer has been saved to a file or encoded in a string, it can be re-loaded and re-instantiated from where it was saved before. Each layer has a static `from_save()` method, which takes two parameters. The first is a string `context`, which is either the name of the file to be loaded from or the encoded string containing the appropriate information. The second is a boolean `file_load`, which determines whether the context is either a file name or the encoded string itself. To use the method on a file:
+```python
+new_layer = Conv2D.from_save("layer1.cspn", True)
+```
+If the file provided is incorrectly formatted/modified or the file imported is not an appropriate `.cspn` file, an exception is thrown instead.
+
+
+For all other saveable tools in the Caspian library, each tool folder has a function which takes the `repr` string and returns a class instance of the encoded object. The functions that correspond to each class type include:
+
+- `Activations` -> `activations.parse_act_info()`
+- `Optimizers` -> `optimizers.parse_opt_info()`
+- `Pooling` -> `pooling.parse_pool_info()`
+- `Schedulers` -> `schedulers.parse_sched_info()`
+
+These classes do not have options to save directly to a file, but the user can export them and import them manually if absolutely needed. If the user creates a custom sub-class and wishes to save or load them, they will need to create an appropriate `repr()` following the same procedure as outlined above, and add the class to the tool folder dictionary:
+
+- `Activations` -> `activations.act_funct_dict`
+- `Optimizers` -> `optimizers.opt_dict`
+- `Pooling` -> `pooling.pool_funct_dict`
+- `Schedulers` -> `schedulers.sched_dict`
+
+Loading a class in these categories will look similar to below:
+```python
+from caspian import activations as act
+
+class CustomFunct(act.Activation):
+    ...
+    def __repr__():
+        ...
+
+#Create instance
+a_1 = CustomFunct(...)
+saved_str = repr(a_1)
+
+#Load from context string
+act.act_funct_dict["CustomFunct"] = CustomFunct
+a_2 = act.parse_act_info(saved_str)
+```
+
+
 
 
 ## Notes
@@ -329,16 +396,21 @@ The example above uses all of the tools that were created to stochastically trai
 **It's important to note that this library is still a work in progress, and due to it using very little framework resources, it prioritizes both efficiency and utility over heavy safety. Here are a few things to keep in mind while using Caspian:**
 
 ### Memory Safety
+
+> [!CAUTION]
 > While most functions and classes in this
 library are perfectly safe to use and modify, there are some that use unsafe memory operations to greatly increase the speed of that tool. An example of this would be any convolutional or pooling layers, like `Conv1D`, `Conv1DTranspose`, or `Pooling1D`. It is highly recommended for the safety of any machine that uses Caspian, DO NOT modify the internal variables or functions of these unsafe layers. Any memory unsafe layers or functions will contain a warning in their in-line documentation. Changes to necessary variables may create harmful effects such as segmentation faults.
 
 ### General Usability
+
 > All classes in this library fit into specific categories of tools that all inherit from a basic abstraction ([**See Above**](#information)) and follow specific functionality guidelines which allow them to work seamlessly with one another. To keep the necessary functionality working as intended, it is encouraged to not modify any variables inside of any class that has already been initialized. Some variables, like the weights of a layer, for instance, may be changed safely as long as the shape and integrity is kept the same.
 
 ### Gradient Calculation
+
 > Because [NumPy] does not have any integrated automatic differentiation functionality, all gradient calculations performed by each class is done manually. For any new layers that the user may create, they may use an auto-grad to perform any backwards passes as long as it is compatible with [NumPy].
 
 ### Further Compatibility
+
 > Caspian only requires Python and [NumPy], so any other libraries that the user wishes to use alongside it will not be required or affected by Caspian's installation. As mentioned previously in [**Gradient Calculation**](#gradient-calculation), any custom class which inherits from a Caspian abstract container may use any helper libraries or frameworks as long as they are [NumPy] compatible.
 
 

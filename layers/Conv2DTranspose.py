@@ -1,6 +1,6 @@
 from caspian.cudalib import np
 from . import Conv2D
-from caspian.optimizers import Optimizer, StandardGD
+from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 from caspian.activations import Activation, parse_act_info
 from caspian.utilities import dilate_array
 
@@ -358,7 +358,7 @@ class Conv2DTranspose(Conv2D):
                         f"\u00A0{self.stride_h}\u00A0{self.stride_w}" + \
                         f"\u00A0{self.pad_height}\u00A0{self.pad_width}" + \
                         f"\u00A0{self.out_pad_height}\u00A0{self.out_pad_width}" + \
-                        f"\u00A0{int(self.use_bias)}\n" + \
+                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
@@ -407,14 +407,18 @@ class Conv2DTranspose(Conv2D):
             kernel_size = tuple(map(int, data_arr[3].split()[1:]))
             kernels = np.array(list(map(int, data_arr[4].strip().split()))).reshape(kernel_size)
 
-            new_neuron = Conv2DTranspose(parse_act_info(prop_info[1]),                  # Activation
+            act = parse_act_info(prop_info[1])                                  #Activation
+            opt = parse_opt_info(prop_info[-1])                                 #Optimizer
+
+            new_neuron = Conv2DTranspose(act,
                                          int(prop_info[2]),                             # Layers
                                          tuple(int(prop_info[3]), int(prop_info[4])),   # Kernel sizes                        
                                          tuple(map(int, input_info)),                   # Input size
                                          tuple(int(prop_info[5]), int(prop_info[6])),   # Strides
                                          tuple(int(prop_info[7]), int(prop_info[8])),   # Padding
                                          tuple(int(prop_info[9]), int(prop_info[10])),  # Out-padding
-                                         bool(prop_info[11]))                           # Use-bias
+                                         bool(prop_info[11]),                           # Use-bias
+                                         opt)
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels
             return new_neuron
