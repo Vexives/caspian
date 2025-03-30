@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from . import __version__
 
 setup(
-    name = "Caspian",
+    name = "caspian",
     version = __version__,
     description = "A deep learning library focused entirely around NumPy.",
     long_description=open("README.md").read(),
