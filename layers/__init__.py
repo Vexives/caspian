@@ -20,3 +20,5 @@ from .Container import Container
 from .Embedding import Embedding
 from .Dropout import Dropout
 from .Sequence import Sequence
+from .Add import Add
+from .Mult import Mult

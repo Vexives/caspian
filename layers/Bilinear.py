@@ -15,7 +15,7 @@ class Bilinear(Dense):
 
     Notes
     -----
-    This model can NOT be put into a standard Sequence layer, as it requires more than one input
+    This layer can NOT be put into a standard Sequence layer, as it requires more than one input
     to function properly. A custom model which incorporates this layer must be created for it to
     function in a Sequence.
 
