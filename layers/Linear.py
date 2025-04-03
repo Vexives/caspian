@@ -5,6 +5,7 @@ from caspian.optimizers import Optimizer, StandardGD, parse_opt_info
 class Linear(Layer):
     """
     A singular linear layer which performs a simple linear transformation using weights and/or biases.
+    A more basic version of `Dense`, does not take any activation function.
 
     Supports any given shape and dimensionality as an input, as long as that shape is given in the 
     initial parameters.

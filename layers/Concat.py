@@ -26,8 +26,10 @@ class Concat(Layer):
         """
         Initializes a `Concat` layer with given axis parameter.
 
-        Arguments
-        ---------
+        Parameters
+        ----------
+        axis : int
+            The axis at which each given array will be concatenated.
         """
         self.axis = axis
         super().__init__(None, None)
