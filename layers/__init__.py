@@ -1,5 +1,6 @@
 from .Layer import Layer
 from .Dense import Dense
+from .Linear import Linear
 from .Reshape import Reshape
 from .BatchNorm import BatchNorm
 from .LayerNorm import LayerNorm
@@ -22,3 +23,4 @@ from .Dropout import Dropout
 from .Sequence import Sequence
 from .Add import Add
 from .Mult import Mult
+from .Concat import Concat
