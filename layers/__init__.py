@@ -23,4 +23,5 @@ from .Dropout import Dropout
 from .Sequence import Sequence
 from .Add import Add
 from .Mult import Mult
+from .MatMul import MatMul
 from .Concat import Concat
