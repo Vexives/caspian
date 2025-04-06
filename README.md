@@ -45,7 +45,7 @@ Before installing, this library requires:
 - CuPy (12x) v13.0.0+ **(Optional)**
 
 ```bash
-$ pip install git+https://github.com/Vexives/caspian
+$ pip install caspian-ml
 ```
 
 
