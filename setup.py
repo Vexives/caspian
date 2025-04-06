@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from . import __version__
+from caspian import __version__
 
 setup(
     name = "caspian",
