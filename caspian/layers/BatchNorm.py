@@ -93,8 +93,8 @@ class BatchNorm(Layer):
         self.running_mean = np.zeros((channels,)) if self.momentum is not None else None
         self.running_var = np.ones((channels,)) if self.momentum is not None else None
 
-        self.gamma = np.ones((channels,)) if scale else None
-        self.beta = np.zeros((channels,)) if shift else None
+        self.gamma = np.ones((channels,)) if scale is True else None
+        self.beta = np.zeros((channels,)) if shift is True else None
     
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:

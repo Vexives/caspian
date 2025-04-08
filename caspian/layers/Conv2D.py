@@ -139,7 +139,7 @@ class Conv2D(Layer):
         self.funct = funct
         self.opt = optimizer
         self.kernel_weights = np.random.uniform(-0.5, 0.5, (layers, self.in_size[0], self.kernel_height, self.kernel_width))
-        self.bias_weights = np.zeros(self.out_size) if biases else None
+        self.bias_weights = np.zeros(self.out_size) if biases is True else None
         self.use_bias = biases
     
 

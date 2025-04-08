@@ -64,7 +64,7 @@ class Linear(Layer):
         super().__init__(in_size, out_size)
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, in_size[-1]))
-        self.bias_weight = np.zeros((outputs, 1)) if biases else None
+        self.bias_weight = np.zeros((outputs, 1)) if biases is True else None
 
         self.opt = optimizer
 

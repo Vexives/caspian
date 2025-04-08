@@ -154,7 +154,7 @@ class Conv2DTranspose(Conv2D):
         self.kernel_weights = np.random.uniform(-0.5, 0.5, (layers, self.in_size[0], self.kernel_height, self.kernel_width))
         self.bias_weights = np.zeros((self.out_size[0], 
                                       self.out_size[1] - out_padding, 
-                                      self.out_size[2] - out_padding)) if biases else None
+                                      self.out_size[2] - out_padding)) if biases is True else None
         self.use_bias = biases
     
 

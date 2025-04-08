@@ -151,7 +151,7 @@ class Conv3D(Layer):
                                                             self.kernel_depth, 
                                                             self.kernel_height, 
                                                             self.kernel_width))
-        self.bias_weights = np.zeros(self.out_size) if biases else None
+        self.bias_weights = np.zeros(self.out_size) if biases is True else None
         self.use_bias = biases
     
 

@@ -172,7 +172,7 @@ class Conv3DTranspose(Conv3D):
         self.bias_weights = np.zeros((self.out_size[0], 
                                       self.out_size[1] - self.out_pad_depth, 
                                       self.out_size[2] - self.out_pad_height,
-                                      self.out_size[3] - self.out_pad_width)) if biases else None
+                                      self.out_size[3] - self.out_pad_width)) if biases is True else None
         self.use_bias = biases
     
 

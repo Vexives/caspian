@@ -64,8 +64,8 @@ class LayerNorm(Layer):
             gradient descent path.        
         """
         super().__init__(input_size, input_size)
-        self.layer_weight = None if not weights else np.random.uniform(-0.5, 0.5, (int(np.prod(input_size)),))
-        self.bias_weight = None if not biases else np.zeros((int(np.prod(input_size)),))
+        self.layer_weight = np.random.uniform(-0.5, 0.5, (int(np.prod(input_size)),)) if weights is True else None
+        self.bias_weight = np.zeros((int(np.prod(input_size)),)) if biases is True else None
 
         self.var_eps = var_eps
         self.opt = optimizer
