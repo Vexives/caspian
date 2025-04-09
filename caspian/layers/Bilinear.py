@@ -1,9 +1,9 @@
 from ..cudalib import np
-from . import Dense
+from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
 
-class Bilinear(Dense):
+class Bilinear(Layer):
     """
     A bilinear dense layer which performs a dual-linear transformation of the input data provided.
 
@@ -84,9 +84,10 @@ class Bilinear(Dense):
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, first_ins[-1], second_ins[-1]))
         self.bias_weight = np.zeros((outputs,))
 
-        in_size = (first_ins, second_ins)
+        in_size = (*first_ins, *second_ins)
         out_size = (*first_ins[:-1], outputs)
         super().__init__(in_size, out_size)
+        self.in_size = (first_ins, second_ins)
         
         self.funct = funct
         self.opt = optimizer

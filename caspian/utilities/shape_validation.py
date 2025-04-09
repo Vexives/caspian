@@ -16,3 +16,7 @@ def validate_grad(funct):
         f"Gradient shape does not match layer output shape. {self.in_size} - {args[0].shape}"
         return funct(self, *args)
     return wrapper
+
+
+def all_ints(size_tuple: tuple) -> bool:
+    return all(map(lambda x: isinstance(x, int), size_tuple))
