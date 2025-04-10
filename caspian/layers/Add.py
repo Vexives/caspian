@@ -15,7 +15,7 @@ class Add(Layer):
 
     This layer can also not be saved or loaded from a file, as it does not take any parameters.
     '''
-    def __init__(self, *_):
+    def __init__(self):
         """
         Initializes an `Add` layer without parameters.
         """
@@ -42,6 +42,7 @@ class Add(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
+        assert isinstance(data, tuple) and len(data) > 1, "Must have more than one array and in tuple form."
         return sum(data)
     
 

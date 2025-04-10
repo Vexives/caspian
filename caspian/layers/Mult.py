@@ -46,9 +46,10 @@ class Mult(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
+        assert isinstance(data, tuple) and len(data) > 1, "Must have more than one array and in tuple form."
         full_arr = np.array(data)
         if training:
-            self.last_ins = full_arr
+            self.__last_ins = full_arr
         return np.prod(full_arr, axis=0)
     
 
@@ -66,7 +67,15 @@ class Mult(Layer):
         tuple[ndarray, ...]
             The given learning gradient.
         """
-        return tuple(np.split(self.last_ins * cost_err, self.last_ins.shape[0]))
+        return tuple(
+                    map(lambda x: x.squeeze(0), 
+                        np.split(self.__last_ins * cost_err, self.__last_ins.shape[0]))
+                    )
+    
+
+    def clear_grad(self):
+        """Clears any data required by the backward pass."""
+        self.__last_ins = None
     
 
     def deepcopy(self):

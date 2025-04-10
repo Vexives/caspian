@@ -58,8 +58,9 @@ class Concat(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
+        assert isinstance(data, tuple) and len(data) > 1, "Must have more than one array and in tuple form."
         if training:
-            self.last_ins = data
+            self.__last_ins = data
         return np.concatenate(data, axis=self.axis)
     
 
@@ -77,7 +78,7 @@ class Concat(Layer):
         tuple[ndarray, ...]
             The given learning gradient.
         """
-        indexes = np.cumsum(list(map(lambda x: x.shape[self.axis], self.last_ins)))
+        indexes = np.cumsum(list(map(lambda x: x.shape[self.axis], self.__last_ins)))
         return tuple(np.split(cost_err, indexes, axis=self.axis))
     
 

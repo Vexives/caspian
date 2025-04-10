@@ -52,9 +52,11 @@ class MatMul(Layer):
         AssertionError
             If the size of the data tuple is not equal to 2.
         """
-        assert len(data) == 2, f"Only two arrays are permitted for this layer. - Size: {len(data)}"
+        assert isinstance(data, tuple) and len(data) == 2, "Must have exactly two arrays and in tuple form."
+        assert data[0].shape[:-2] == data[1].shape[:-2], f"Higher dimensional shapes do not match. - " + \
+                                                        f"{data[0].shape}, {data[1].shape}"
         if training:
-            self.last_ins = data
+            self.__last_ins = data
         return data[0] @ data[1]
     
 
@@ -72,8 +74,13 @@ class MatMul(Layer):
         tuple[ndarray, ...]
             The given learning gradient.
         """
-        return (cost_err @ np.moveaxis(self.last_ins[1], -1, -2), 
-                np.moveaxis(self.last_ins[0], -1, -2) @ cost_err)
+        return (cost_err @ np.moveaxis(self.__last_ins[1], -1, -2), 
+                np.moveaxis(self.__last_ins[0], -1, -2) @ cost_err)
+    
+
+    def clear_grad(self):
+        """Clears any data required by the backward pass."""
+        self.__last_ins = None
     
 
     def deepcopy(self):

@@ -184,10 +184,10 @@ class Embedding(Layer):
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
             prop_info = data_arr[0].split("\u00A0")
-            weight_info = data_arr[-2].split("\u00A0")
+            weight_info = data_arr[-2].strip().split()
 
             v_len, e_len = int(prop_info[1]), int(prop_info[2])
-            table = np.array(list(map(float, weight_info.split()))).reshape((v_len, e_len))
+            table = np.array(list(map(float, weight_info))).reshape((v_len, e_len))
             opt = parse_opt_info(prop_info[-1])
 
             new_neuron = Embedding(v_len, e_len, opt)
