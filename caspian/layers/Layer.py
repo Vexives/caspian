@@ -10,8 +10,8 @@ class Layer():
     Performs no operations and takes no arguments.
     '''
     def __init__(self, in_size: tuple[int, ...], out_size: tuple[int, ...]):
-        assert all_ints(in_size)
-        assert all_ints(out_size)
+        assert all_ints(in_size), "Incorrect input shape type - Must be all integers."
+        assert all_ints(out_size), "Incorrect output shape type - Must be all integers."
         self.in_size = in_size
         self.out_size = out_size
         pass

@@ -19,4 +19,6 @@ def validate_grad(funct):
 
 
 def all_ints(size_tuple: tuple) -> bool:
+    if size_tuple is None:
+        return True
     return all(map(lambda x: isinstance(x, int), size_tuple))

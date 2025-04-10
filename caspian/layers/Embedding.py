@@ -95,7 +95,7 @@ class Embedding(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        ret_grad = self.embed_table.T @ cost_err
+        ret_grad = cost_err @ self.embed_table.T
         self.embed_table += self.__last_in.T @ self.opt.process_grad(cost_err)
         return ret_grad
     
