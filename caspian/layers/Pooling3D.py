@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
+from ..utilities import all_positive
 
 class Pooling3D(Layer):
     """
@@ -84,17 +85,20 @@ class Pooling3D(Layer):
         self.funct = pool_funct
 
         #Strides and Kernel size initialization
+        assert all_positive(strides), f"Strides must be greater than or equal to one for all dimensions. - {strides}"
+        assert all_positive(kernel_size), f"Kernel size must be greater than or equal to one for all dimensions. - {kernel_size}"
         self.stride_d, self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides, strides)
-
         self.kernel_depth, self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size, kernel_size)
 
         #Padding size initialization
+        assert all_positive(padding, True), f"Padding must be greater than or equal to zero for all dimensions. - {padding}"
         self.pad_depth, self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding, padding)
         self.pad_front, self.pad_back = ((self.pad_depth+1)//2, self.pad_depth//2)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
 
         #Out-shape and sliding window shape initialization
+        assert all_positive(input_size), f"Input shape contents must all be of size 0 or above. - {input_size}"
         in_size = input_size
         out_size = (in_size[0],
                     (in_size[1] - self.kernel_depth + self.pad_depth) // self.stride_d + 1,

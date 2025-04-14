@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
+from ..utilities import all_positive
 
 class Pooling1D(Layer):
     """
@@ -74,14 +75,18 @@ class Pooling1D(Layer):
         self.funct = pool_funct
 
         #Strides and Kernel size initialization
+        assert strides >= 1, "Strides must be greater than or equal to one."
+        assert kernel_size >= 1, "Kernel size must be greater than or equal to one."
         self.strides = strides
         self.kernel_size = kernel_size
 
         #Padding Initialization
+        assert padding >= 0, "Padding must be greater than or equal to zero."
         self.padding_all = padding
         self.pad_left, self.pad_right = ((padding+1)//2, padding//2)
         
         #Out-Shape and Sliding Window Shape Initialization
+        assert all_positive(input_size), f"Input shape contents must all be of size 0 or above. - {input_size}"
         in_size = input_size
         out_size = (in_size[0],
                     (in_size[1] - self.kernel_size + padding) // self.strides + 1)
@@ -124,7 +129,6 @@ class Pooling1D(Layer):
 
         if training:
             self.__last_in = data_padded
-            self.__last_out = pool_val
 
         if len(data.shape) < 3:
             pool_val = pool_val.squeeze(axis=0)

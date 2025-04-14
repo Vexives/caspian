@@ -89,6 +89,12 @@ def test_linear():
     with pytest.raises(AssertionError):
         layer = Linear(1, 2.2)
 
+    with pytest.raises(AssertionError):
+        layer = Linear(-1, 2)
+
+    with pytest.raises(AssertionError):
+        layer = Linear((-1, 2), 2)
+
     with pytest.raises(AttributeError):
         layer = Linear(1, 2, biases=3)
         _ = layer.bias_weight.shape
@@ -186,6 +192,12 @@ def test_dense():
     
     with pytest.raises(AssertionError):
         layer = Dense(None, 1, 2.2)
+
+    with pytest.raises(AssertionError):
+        layer = Dense(None, -1, 2)
+
+    with pytest.raises(AssertionError):
+        layer = Dense(None, (-1, 2), 2)
 
     with pytest.raises(TypeError):
         layer = Dense(None, 3, 2)
@@ -299,6 +311,12 @@ def test_bilinear():
 
     with pytest.raises(TypeError):
         layer = Bilinear(None, 1, 1, 2.2)
+
+    with pytest.raises(AssertionError):
+        layer = Bilinear(None, -1, -1, 2)
+
+    with pytest.raises(AssertionError):
+        layer = Bilinear(None, (-1, 2), (-1, 2), 2)
 
     with pytest.raises(TypeError):
         layer = Bilinear(None, 2, 3, 2)

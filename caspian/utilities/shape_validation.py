@@ -22,3 +22,12 @@ def all_ints(size_tuple: tuple) -> bool:
     if size_tuple is None:
         return True
     return all(map(lambda x: isinstance(x, int), size_tuple))
+
+
+def all_positive(contents: tuple | int | float, include_zero: bool = False) -> bool:
+    try:
+        if isinstance(contents, tuple):
+            return all(map(lambda x: x >= int(not include_zero), contents))
+        return contents >= int(not include_zero)
+    except TypeError:
+        return False

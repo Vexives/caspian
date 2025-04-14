@@ -2,6 +2,7 @@ from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
+from ..utilities import all_positive
 
 class Bilinear(Layer):
     """
@@ -80,6 +81,9 @@ class Bilinear(Layer):
 
         assert first_ins[:-1] == second_ins[:-1], \
         f"Input shape must be equal except for last dimension: {first_ins} - {second_ins}"
+        assert all_positive(first_ins), f"All input sizes must be greater than 0. - {first_ins}"
+        assert all_positive(second_ins), f"All input sizes must be greater than 0. - {second_ins}"
+        assert outputs >= 1, f"Output value must be greater than or equal to one."
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, first_ins[-1], second_ins[-1]))
         self.bias_weight = np.zeros((outputs,))
