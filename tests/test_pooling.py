@@ -1,5 +1,6 @@
 from caspian.layers import Pooling1D, Pooling2D, Pooling3D
 from caspian.pooling import Maximum, Minimum, Average
+from caspian.utilities import InvalidDataException, UnsafeMemoryAccessException
 import numpy as np
 import pytest
 
@@ -53,24 +54,37 @@ def test_pooling1D():
 
 
     # Type failure checking
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling1D(None, 1.1, (2, 10))
 
-    with pytest.raises(IndexError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling1D(None, 1.1, (2,))
     
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling1D(None, 1, "test")
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling1D(None, 2, (2, 10), "c")
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling1D(None, 2, (2, 10), 0)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling1D(None, 2, (2, 10), 1, -1)
  
+    
+    # Incorrect shape tests
+    layer = Pooling1D(Maximum(), 2, (2, 20), 2)
+    data_in = np.zeros((2, 20))
+    data_false_in = np.zeros((3, 20))
+    data_false_out = np.zeros((2, 11))
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer(data_false_in)
+
+    _ = layer(data_in, True)
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer.backward(data_false_out)
+
 
     # Saving + Loading
     layer = Pooling1D(Maximum(), 2, (2, 20), 2, 3)
@@ -145,27 +159,40 @@ def test_pooling2D():
 
 
     # Type failure checking
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling2D(None, 1.1, (2, 10, 10))
 
     with pytest.raises(IndexError):
         layer = Pooling2D(None, 1, (2, 10))
     
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling2D(None, 1, "test")
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling2D(None, 2, (2, 10, 10), "c")
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling2D(None, 2, (2, 10, 10), 0)
 
     with pytest.raises(ValueError):
         layer = Pooling2D(None, 1, (2, 10, 10), (2,))
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling2D(None, 2, (2, 10, 10), 1, -1)
  
+
+    # Incorrect shape tests
+    layer = Pooling2D(Maximum(), 2, (2, 20, 20), 2)
+    data_in = np.zeros((2, 20, 20))
+    data_false_in = np.zeros((3, 20, 20))
+    data_false_out = np.zeros((2, 11, 10))
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer(data_false_in)
+
+    _ = layer(data_in, True)
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer.backward(data_false_out)
+
 
     # Saving + Loading
     layer = Pooling2D(Maximum(), 2, (2, 20, 20), 2, 3)
@@ -246,27 +273,40 @@ def test_pooling3D():
 
 
     # Type failure checking
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling3D(None, 1.1, (2, 10, 10, 10))
 
     with pytest.raises(IndexError):
         layer = Pooling3D(None, 1, (2, 10, 10))
     
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling3D(None, 1, "test")
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling3D(None, 2, (2, 10, 10, 10), "c")
 
     with pytest.raises(ValueError):
         layer = Pooling3D(None, 1, (2, 10, 10), (2,))
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling3D(None, 2, (2, 10, 10, 10), 0)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Pooling3D(None, 2, (2, 10, 10, 10), 1, -1)
  
+
+    # Incorrect shape tests
+    layer = Pooling3D(Maximum(), 2, (2, 20, 20, 20), 2)
+    data_in = np.zeros((2, 20, 20, 20))
+    data_false_in = np.zeros((3, 20, 20, 20))
+    data_false_out = np.zeros((2, 11, 10, 10))
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer(data_false_in)
+
+    _ = layer(data_in, True)
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer.backward(data_false_out)
+
 
     # Saving + Loading
     layer = Pooling3D(Maximum(), 2, (2, 20, 20, 20), 2, 3)

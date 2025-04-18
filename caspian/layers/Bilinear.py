@@ -2,7 +2,7 @@ from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
-from ..utilities import all_positive
+from ..utilities import all_positive, all_ints, InvalidDataException, ShapeIncompatibilityException
 
 class Bilinear(Layer):
     """
@@ -79,11 +79,19 @@ class Bilinear(Layer):
         first_ins = inputs_1 if isinstance(inputs_1, tuple) else (inputs_1,)
         second_ins = inputs_2 if isinstance(inputs_2, tuple) else (inputs_2,)
 
-        assert first_ins[:-1] == second_ins[:-1], \
-        f"Input shape must be equal except for last dimension: {first_ins} - {second_ins}"
-        assert all_positive(first_ins), f"All input sizes must be greater than 0. - {first_ins}"
-        assert all_positive(second_ins), f"All input sizes must be greater than 0. - {second_ins}"
-        assert outputs >= 1, f"Output value must be greater than or equal to one."
+        if first_ins[:-1] != second_ins[:-1]:
+            raise ShapeIncompatibilityException(
+                f"Input shape must be equal except for last dimension: {first_ins} - {second_ins}")
+        if not all_ints(first_ins): 
+            raise InvalidDataException("Incorrect first input shape type - Must be all integers.")
+        if not all_ints(second_ins): 
+            raise InvalidDataException("Incorrect second input shape type - Must be all integers.")
+        if not all_positive(first_ins): 
+            raise InvalidDataException(f"All input sizes must be greater than 0. - {first_ins}")
+        if not all_positive(second_ins): 
+            raise InvalidDataException(f"All input sizes must be greater than 0. - {second_ins}")
+        if outputs < 1 or not isinstance(outputs, int):
+            raise InvalidDataException("Output value must be greater than or equal to one.")
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, first_ins[-1], second_ins[-1]))
         self.bias_weight = np.zeros((outputs,))

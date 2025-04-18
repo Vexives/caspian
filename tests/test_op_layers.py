@@ -1,4 +1,5 @@
 from caspian.layers import Mult, Add, Concat, MatMul
+from caspian.utilities import InvalidDataException
 import pytest
 import numpy as np
 
@@ -15,9 +16,9 @@ def test_mult():
 
     # Single element pass tests
     data_in = np.zeros((10, 5))
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer(data_in)
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer((data_in))
 
     
@@ -58,9 +59,9 @@ def test_add():
 
     # Single element pass tests
     data_in = np.zeros((10, 5))
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer(data_in)
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer((data_in))
 
     
@@ -95,9 +96,9 @@ def test_concat():
 
     # Single element pass tests
     data_in = np.zeros((10, 5))
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer(data_in)
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer((data_in))
 
     
@@ -139,15 +140,15 @@ def test_matmul():
 
     # Single element pass tests
     data_in = np.zeros((10, 5))
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer(data_in)
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer((data_in))
 
 
     # More than two elements pass tests
     data_in = (np.zeros((10, 5)), np.zeros((10, 5)), np.zeros((10, 5)))
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         _ = layer(data_in)
 
 

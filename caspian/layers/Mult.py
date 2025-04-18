@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import InvalidDataException
 
 class Mult(Layer):
     '''
@@ -46,7 +47,8 @@ class Mult(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
-        assert isinstance(data, tuple) and len(data) > 1, "Must have more than one array and in tuple form."
+        if not isinstance(data, tuple) or len(data) < 2:
+            raise InvalidDataException("Must have more than one array and in tuple form.")
         full_arr = np.array(data)
         if training:
             self.__last_ins = full_arr

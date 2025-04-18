@@ -18,10 +18,16 @@ def validate_grad(funct):
     return wrapper
 
 
-def all_ints(size_tuple: tuple) -> bool:
-    if size_tuple is None:
+def confirm_shape(in_size: tuple[int, ...], expected: tuple[int, ...], indices: int):
+    return len(in_size) <= indices+1 and in_size[-indices:] == expected
+
+
+def all_ints(element: tuple | int) -> bool:
+    if element is None:
         return True
-    return all(map(lambda x: isinstance(x, int), size_tuple))
+    if not isinstance(element, tuple):
+        return isinstance(element, int)
+    return all(map(lambda x: isinstance(x, int), element))
 
 
 def all_positive(contents: tuple | int | float, include_zero: bool = False) -> bool:

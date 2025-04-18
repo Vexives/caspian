@@ -1,7 +1,8 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
-from ..utilities import all_positive
+from ..utilities import all_positive, all_ints, confirm_shape, \
+                        UnsafeMemoryAccessException, InvalidDataException
 
 class Pooling2D(Layer):
     """
@@ -85,19 +86,29 @@ class Pooling2D(Layer):
         self.funct = pool_funct
 
         #Strides and Kernel size initialization
-        assert all_positive(strides), f"Strides must be greater than or equal to one for all dimensions. - {strides}"
-        assert all_positive(kernel_size), f"Kernel size must be greater than or equal to one for all dimensions. - {kernel_size}"
+        if not all_ints(strides):
+            raise InvalidDataException("Strides must be all integers.")
+        if not all_ints(kernel_size):
+            raise InvalidDataException("Kernel size must be all integers.")
+        if not all_positive(strides): 
+            raise InvalidDataException(f"Strides must be greater than or equal to one for all dimensions. - {strides}")
+        if not all_positive(kernel_size): 
+            raise InvalidDataException(f"Kernel size must be greater than or equal to one for all dimensions. - {kernel_size}")
         self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides)
         self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
 
         #Padding size initialization
-        assert all_positive(padding, True), f"Padding must be greater than or equal to zero for all dimensions. - {padding}"
+        if not all_ints(padding):
+            raise InvalidDataException("Padding must be all integers.")
+        if not all_positive(padding, True):
+            raise InvalidDataException(f"Padding must be greater than or equal to zero for all dimensions. - {padding}")
         self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
 
         #Out-shape and sliding window shape initialization
-        assert all_positive(input_size), f"Input shape contents must all be of size 0 or above. - {input_size}"
+        if not all_positive(input_size): 
+            raise InvalidDataException(f"Input shape contents must all be of size 0 or above. - {input_size}")
         in_size = input_size
         out_size = (in_size[0],
                     (in_size[1] - self.kernel_height + self.pad_height) // self.stride_h + 1, 
@@ -125,6 +136,8 @@ class Pooling2D(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
+        if not confirm_shape(data.shape, self.in_size, 3):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {data.shape}, {self.in_size}")
         new_data = np.expand_dims(data, axis=0) if len(data.shape) < 4 else data    #Enforce batches.
         data_padded = np.pad(new_data, pad_width=((0, 0), (0, 0), 
                                                   (self.pad_top, self.pad_bottom), 
@@ -168,6 +181,8 @@ class Pooling2D(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
+        if not confirm_shape(cost_err.shape, self.out_size, 3):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 4 else cost_err   #Enforce batches.
         main_strides = (self.__last_in.strides[0], 
                    self.__last_in.strides[1],

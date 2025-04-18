@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import ShapeIncompatibilityException
 
 class Reshape(Layer):
     """
@@ -48,7 +49,8 @@ class Reshape(Layer):
             example_arr = np.zeros(in_test_shape)
             example_arr = example_arr.reshape(output_size)
         except:
-            raise AttributeError(f"Input and output shapes not compatible. - {input_size} - {output_size}")
+            raise ShapeIncompatibilityException("Input and output shapes not compatible." + \
+                                                f"- {input_size} - {output_size}")
 
         super().__init__(input_size, output_size)
     

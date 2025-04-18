@@ -1,5 +1,6 @@
 from caspian.layers import Layer, Linear, Dense, Bilinear, Embedding
 from caspian.activations import ReLU
+from caspian.utilities import InvalidDataException, ShapeIncompatibilityException
 import pytest
 import numpy as np
 
@@ -83,16 +84,16 @@ def test_linear():
 
 
     # Type failure checking
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Linear(1.1, 2)
     
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Linear(1, 2.2)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Linear(-1, 2)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Linear((-1, 2), 2)
 
     with pytest.raises(AttributeError):
@@ -187,16 +188,16 @@ def test_dense():
 
 
     # Type failure checking
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Dense(None, 1.1, 2)
     
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Dense(None, 1, 2.2)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Dense(None, -1, 2)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Dense(None, (-1, 2), 2)
 
     with pytest.raises(TypeError):
@@ -303,19 +304,19 @@ def test_bilinear():
 
 
     # Type failure checking
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         layer = Bilinear(None, 1.1, 1, 2)
     
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         layer = Bilinear(None, 1, 1.1, 2)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         layer = Bilinear(None, 1, 1, 2.2)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Bilinear(None, -1, -1, 2)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(InvalidDataException):
         layer = Bilinear(None, (-1, 2), (-1, 2), 2)
 
     with pytest.raises(TypeError):
@@ -373,10 +374,10 @@ def test_bilinear():
 
 def test_embedding():
     # Integer size enforcement
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         _ = Embedding(10, (1, 10))
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         _ = Embedding((1, 10), 10)
     
 

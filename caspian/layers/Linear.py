@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import all_positive
+from ..utilities import all_positive, InvalidDataException
 
 class Linear(Layer):
     """
@@ -62,8 +62,10 @@ class Linear(Layer):
         """
         in_size = inputs if isinstance(inputs, tuple) else (inputs,)
         out_size = (*in_size[:-1], outputs,)
-        assert all_positive(in_size), f"All input sizes must be greater than 0. - {in_size}"
-        assert outputs >= 1, f"Output value must be greater than or equal to one."
+        if not all_positive(in_size): 
+            raise InvalidDataException(f"All input sizes must be greater than 0. - {in_size}")
+        if outputs < 1:
+            raise InvalidDataException("Output value must be greater than or equal to one.")
         super().__init__(in_size, out_size)
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, in_size[-1]))

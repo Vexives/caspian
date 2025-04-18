@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import InvalidDataException
 
 class MatMul(Layer):
     '''
@@ -52,9 +53,11 @@ class MatMul(Layer):
         AssertionError
             If the size of the data tuple is not equal to 2.
         """
-        assert isinstance(data, tuple) and len(data) == 2, "Must have exactly two arrays and in tuple form."
-        assert data[0].shape[:-2] == data[1].shape[:-2], f"Higher dimensional shapes do not match. - " + \
-                                                        f"{data[0].shape}, {data[1].shape}"
+        if not isinstance(data, tuple) or len(data) != 2:
+            raise InvalidDataException("Must have exactly two arrays and in tuple form.")
+        if data[0].shape[:-2] != data[1].shape[:-2]: 
+            raise InvalidDataException(f"Higher dimensional shapes do not match. - " + \
+                                       f"{data[0].shape}, {data[1].shape}")
         if training:
             self.__last_ins = data
         return data[0] @ data[1]
