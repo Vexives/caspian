@@ -45,7 +45,7 @@ class Reshape(Layer):
             the output shape. 
         """
         try:
-            in_test_shape = tuple(filter(lambda x: x > 0, input_size))
+            in_test_shape = tuple(filter(lambda x: x != -1, input_size))
             example_arr = np.zeros(in_test_shape)
             example_arr = example_arr.reshape(output_size)
         except:
