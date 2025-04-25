@@ -1,12 +1,13 @@
 from ..cudalib import np
-from . import Layer
+from . import Linear
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
-from ..utilities import all_positive, InvalidDataException
 
-class Dense(Layer):
+class Dense(Linear):
     """
     A singular dense layer which performs a linear transformation of the input data provided.
+    A more structured version of the `Linear` layer, which contains all parameters as well as a
+    non-linear activation function.
 
     Supports any given shape and dimensionality as an input, as long as that shape is given in the 
     initial parameters.
@@ -61,20 +62,14 @@ class Dense(Layer):
         optimizer : Optimizer, default: StandardGD()
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.
+
+        Raises
+        ------
+        InvalidDataException
+            If the input or output sizes contain any non-integer value, or values below 1.
         """
-        in_size = inputs if isinstance(inputs, tuple) else (inputs,)
-        out_size = (*in_size[:-1], outputs,)
-        if not all_positive(in_size): 
-            raise InvalidDataException(f"All input sizes must be greater than 0. - {in_size}")
-        if outputs < 1:
-            raise InvalidDataException("Output value must be greater than or equal to one.")
-        super().__init__(in_size, out_size)
-
-        self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, in_size[-1]))
-        self.bias_weight = np.zeros((outputs, 1))
-
+        super().__init__(inputs, outputs, True, optimizer)
         self.funct = funct
-        self.opt = optimizer
 
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:

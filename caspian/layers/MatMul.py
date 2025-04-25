@@ -50,8 +50,8 @@ class MatMul(Layer):
 
         Raises
         ------
-        AssertionError
-            If the size of the data tuple is not equal to 2.
+        InvalidDataException
+            If the size of the data tuple is not equal to 2 or the higher dimensional shapes do not match.
         """
         if not isinstance(data, tuple) or len(data) != 2:
             raise InvalidDataException("Must have exactly two arrays and in tuple form.")

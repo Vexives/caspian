@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import all_positive, InvalidDataException
+from ..utilities import all_positive, all_ints, InvalidDataException
 
 class Linear(Layer):
     """
@@ -59,11 +59,20 @@ class Linear(Layer):
         optimizer : Optimizer, default: StandardGD()
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.
+
+        Raises
+        ------
+        InvalidDataException
+            If the input or output sizes contain any non-integer value, or values below 1.
         """
         in_size = inputs if isinstance(inputs, tuple) else (inputs,)
         out_size = (*in_size[:-1], outputs,)
+        if not all_ints(in_size):
+            raise InvalidDataException(f"Input sizes must be integers. - {in_size}")
         if not all_positive(in_size): 
             raise InvalidDataException(f"All input sizes must be greater than 0. - {in_size}")
+        if not isinstance(outputs, int):
+            raise InvalidDataException("Output value must be an integer.")
         if outputs < 1:
             raise InvalidDataException("Output value must be greater than or equal to one.")
         super().__init__(in_size, out_size)

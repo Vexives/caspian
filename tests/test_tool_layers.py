@@ -1,4 +1,4 @@
-from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D
+from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear
 from caspian.activations import ReLU, Identity
 from caspian.utilities import InvalidDataException, ShapeIncompatibilityException
 import numpy as np
@@ -126,22 +126,283 @@ def test_reshape():
 
 
 def test_sequence():
-    pass
+    # Invalid input tests
+    with pytest.raises(InvalidDataException):
+        _ = Sequence([])
+
+    with pytest.raises(InvalidDataException):
+        _ = Sequence([Reshape((1, 2, 3), (3, 2, 1)), "test"])
+
+    with pytest.raises(InvalidDataException):
+        _ = Sequence(["test", Reshape((1, 2, 3), (3, 2, 1))])
+
+    with pytest.raises(InvalidDataException):
+        _ = Sequence([Linear(3, 5), Linear(6, 5)])
+
+    layer = Sequence([Reshape((1, 2, 3), (3, 2, 1)), Upsampling2D(2)])
+    with pytest.raises(InvalidDataException):
+        layer += "test"
+
+    with pytest.raises(InvalidDataException):
+        layer += 1.1
+
+
+    # General usage tests
+    layer = Sequence([Linear(5, 3), Linear(3, 6), Linear(6, 8)])
+    data_in = np.zeros((5,))
+    assert layer(data_in).shape == (8,)
+
+    #TODO:
+    #TODO:
+    #TODO:
 
 
 
 
 def test_upsample1D():
-    pass
+    # Invalid value tests
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling1D(1.1)
+    
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling1D("test")
+
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling1D((1,))
+
+
+    # Standard usage tests
+    layer = Upsampling1D(2)
+    data_in = np.zeros((3, 5))
+    assert layer(data_in).shape == (3, 10)
+
+    layer = Upsampling1D(1)
+    assert layer(data_in).shape == (3, 5)
+
+    layer = Upsampling1D(3)
+    assert layer(data_in).shape == (3, 15)
+
+
+    # Input variation tests
+    layer = Upsampling1D(2)
+    data_in = np.zeros((3, 3, 5))
+    assert layer(data_in).shape == (3, 3, 10)
+
+    data_in = np.zeros((3, 4, 3, 5))
+    assert layer(data_in).shape == (3, 4, 3, 10)
+
+    data_in = np.zeros((5,))
+    assert layer(data_in).shape == (10,)
+
+
+    # Backward pass tests
+    layer = Upsampling1D(2)
+    data_in = np.zeros((3, 5))
+    data_out = np.zeros((3, 10))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (3, 5)
+
+    layer = Upsampling1D(1)
+    data_out = np.zeros((3, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (3, 5)
+
+    layer = Upsampling1D(3)
+    data_out = np.zeros((3, 15))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (3, 5)
+
+
+    # Deepcopy
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert layer2.rate == layer.rate
+
+
+    # Saving
+    context = layer.save_to_file()
+    layer2 = Upsampling1D.from_save(context)
+    assert layer2.rate == layer.rate
 
 
 
 
 def test_upsample2D():
-    pass
+    # Invalid value tests
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling2D(1.1)
+    
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling2D("test")
+
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling2D((1,))
+
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling2D((2, 1, 1, 1))
+
+
+    # Standard usage tests
+    layer = Upsampling2D(2)
+    data_in = np.zeros((3, 3, 5))
+    assert layer(data_in).shape == (3, 6, 10)
+
+    layer = Upsampling2D(1)
+    assert layer(data_in).shape == (3, 3, 5)
+
+    layer = Upsampling2D(3)
+    assert layer(data_in).shape == (3, 9, 15)
+
+    layer = Upsampling2D((1, 2))
+    assert layer(data_in).shape == (3, 3, 10)
+
+    layer = Upsampling2D((2, 1))
+    assert layer(data_in).shape == (3, 6, 5)
+
+
+    # Input variation tests
+    layer = Upsampling2D(2)
+    data_in = np.zeros((4, 3, 3, 5))
+    assert layer(data_in).shape == (4, 3, 6, 10)
+
+    data_in = np.zeros((9, 3, 4, 3, 5))
+    assert layer(data_in).shape == (9, 3, 4, 6, 10)
+
+    data_in = np.zeros((2, 5))
+    assert layer(data_in).shape == (4, 10)
+
+    data_in = np.zeros((5,))
+    assert layer(data_in).shape == (2, 10)
+
+
+    # Backward pass tests
+    layer = Upsampling2D(2)
+    data_in = np.zeros((5, 3, 5))
+    data_out = np.zeros((5, 6, 10))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (5, 3, 5)
+
+    layer = Upsampling2D(1)
+    data_out = np.zeros((5, 3, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (5, 3, 5)
+
+    layer = Upsampling2D(3)
+    data_out = np.zeros((5, 9, 15))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (5, 3, 5)
+
+    layer = Upsampling2D((2, 1))
+    data_out = np.zeros((5, 6, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (5, 3, 5)
+
+    layer = Upsampling2D((1, 2))
+    data_out = np.zeros((5, 3, 10))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (5, 3, 5)
+
+
+    # Deepcopy
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert layer2.rate == layer.rate
+
+
+    # Saving
+    context = layer.save_to_file()
+    layer2 = Upsampling2D.from_save(context)
+    assert layer2.rate == layer.rate
 
 
 
 
 def test_upsample3D():
-    pass
+    # Invalid value tests
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling3D(1.1)
+    
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling3D("test")
+
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling3D((1,))
+
+    with pytest.raises(InvalidDataException):
+        _ = Upsampling3D((2, 1, 1, 1))
+
+
+    # Standard usage tests
+    layer = Upsampling3D(2)
+    data_in = np.zeros((4, 3, 3, 5))
+    assert layer(data_in).shape == (4, 6, 6, 10)
+
+    layer = Upsampling3D(1)
+    assert layer(data_in).shape == (4, 3, 3, 5)
+
+    layer = Upsampling3D(3)
+    assert layer(data_in).shape == (4, 9, 9, 15)
+
+    layer = Upsampling3D((2, 1, 2))
+    assert layer(data_in).shape == (4, 6, 3, 10)
+
+    layer = Upsampling3D((2, 1, 1))
+    assert layer(data_in).shape == (4, 6, 3, 5)
+
+    layer = Upsampling3D((1, 2, 1))
+    assert layer(data_in).shape == (4, 3, 6, 5)
+
+
+    # Input variation tests
+    layer = Upsampling3D(2)
+    data_in = np.zeros((5, 4, 3, 3, 5))
+    assert layer(data_in).shape == (5, 4, 6, 6, 10)
+
+    data_in = np.zeros((9, 9, 3, 4, 3, 5))
+    assert layer(data_in).shape == (9, 9, 3, 8, 6, 10)
+
+    data_in = np.zeros((2, 5))
+    assert layer(data_in).shape == (2, 4, 10)
+
+    data_in = np.zeros((5,))
+    assert layer(data_in).shape == (2, 2, 10)
+
+
+    # Backward pass tests
+    layer = Upsampling3D(2)
+    data_in = np.zeros((4, 5, 3, 5))
+    data_out = np.zeros((4, 10, 6, 10))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (4, 5, 3, 5)
+
+    layer = Upsampling3D(1)
+    data_out = np.zeros((4, 5, 3, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (4, 5, 3, 5)
+
+    layer = Upsampling3D(3)
+    data_out = np.zeros((4, 15, 9, 15))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (4, 5, 3, 5)
+
+    layer = Upsampling3D((1, 2, 1))
+    data_out = np.zeros((4, 5, 6, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (4, 5, 3, 5)
+
+    layer = Upsampling3D((1, 2, 3))
+    data_out = np.zeros((4, 5, 6, 15))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (4, 5, 3, 5)
+
+
+    # Deepcopy
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert layer2.rate == layer.rate
+
+
+    # Saving
+    context = layer.save_to_file()
+    layer2 = Upsampling3D.from_save(context)
+    assert layer2.rate == layer.rate

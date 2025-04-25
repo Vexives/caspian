@@ -1,6 +1,6 @@
 from .Layer import Layer
-from .Dense import Dense
 from .Linear import Linear
+from .Dense import Dense
 from .Reshape import Reshape
 from .BatchNorm import BatchNorm
 from .LayerNorm import LayerNorm

@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import all_ints, all_positive, InvalidDataException
 
 class Upsampling2D(Layer):
     """
@@ -31,9 +32,18 @@ class Upsampling2D(Layer):
         rate : tuple[int, int] | int
             An int or tuple of ints which represent the multiplicative size scaling rate of this 
             layer for both dimensions.
+
+        Raises
+        ------
+        InvalidDataException
+            If the rate provided to the layer is either not an integer, tuple of integers, or 
+            any value not greater than 0.
         """
         super().__init__(None, None)
-        assert int(np.prod(rate)) > 1, "Upsampling rate must be above 1 for at least one dimension."
+        if not all_ints(rate) or not all_positive(rate):
+            raise InvalidDataException("Upsampling rate must be an integer or tuple of integers greater than 0.")
+        if isinstance(rate, tuple) and len(rate) != 2:
+            raise InvalidDataException(f"Upsampling rate length must match the number of dimensions. - {rate}")
         self.rate = rate if isinstance(rate, tuple) else (rate, rate)
     
 
@@ -116,7 +126,7 @@ class Upsampling2D(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Upsampling2D\u00A0{self.rate}\n\u00A0" 
+        write_ret_str = f"Upsampling2D\u00A0" + " ".join(list(map(str, self.rate))) + "\n\u00A0" 
         if not filename:
             return write_ret_str
         if filename.find(".cspn") == -1:

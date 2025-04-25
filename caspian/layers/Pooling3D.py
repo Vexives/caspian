@@ -81,6 +81,12 @@ class Pooling3D(Layer):
         padding : tuple[int, int, int] | int, default: 0
             An integer that determines how many empty data points are put on the edges of the final dimensions
             as padding layers before pooling.
+
+        Raises
+        ------
+        InvalidDataException
+            If any of the data provided is not an integer or tuple of integers, or less than one 
+            (with the exception of padding, which can be 0). Expected input size must be a tuple of integers.
         """
         #Pooling function
         self.funct = pool_funct
@@ -138,6 +144,11 @@ class Pooling3D(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
         if not confirm_shape(data.shape, self.in_size, 4):
             raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {data.shape}, {self.in_size}")
@@ -164,7 +175,6 @@ class Pooling3D(Layer):
 
         if training:
             self.__last_in = data_padded
-            self.__last_out = pool_val
 
         if len(data.shape) < 5:
             pool_val = pool_val.squeeze(axis=0)
@@ -186,6 +196,11 @@ class Pooling3D(Layer):
         ndarray
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
         if not confirm_shape(cost_err.shape, self.out_size, 4):
             raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
@@ -235,7 +250,6 @@ class Pooling3D(Layer):
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass and sets the variables to `None`."""
         self.__last_in = None
-        self.__last_out = None
 
 
     def set_optimizer(self, *_) -> None:

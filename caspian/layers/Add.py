@@ -42,6 +42,11 @@ class Add(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        InvalidDataException
+            If the data provided is not in tuple format or has a size of less than 2.
         """
         if not isinstance(data, tuple) or len(data) < 2:
             raise InvalidDataException("Must have more than one array and in tuple form.")

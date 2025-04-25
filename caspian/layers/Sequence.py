@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD
+from ..utilities import InvalidDataException
 
 class Sequence(Layer):
     """
@@ -60,19 +61,26 @@ class Sequence(Layer):
 
         Raises
         ------
-        AssertionError
-            If either the length of the `layers` list is 0 or if any of the layers contained inside of
-            the list are disjointed and cannot be seamlessly processed sequentially.
+        InvalidDataException
+            If either the length of the `layers` list is 0, if any of the layers contained inside of
+            the list are disjointed and cannot be seamlessly processed sequentially, or if the list
+            contains objects that are not descendants of the Caspian `Layer` class.
         """
         # Ensure that there is at least one layer in the system at all times.
-        if isinstance(layers, list):
-            assert len(layers) >= 1, "List of layers must have at least one initial layer."
+        if isinstance(layers, list) and len(layers) < 1:
+            raise InvalidDataException("Initial layer list must have at least one layer.")
 
         # Ensure that all layers can feed into each other seamlessly.
         self.layers = layers if isinstance(layers, list) else [layers]
         for first, second in zip(self.layers[:-1], self.layers[1:]):
-            assert self.__verify_shapes(first, second), \
-            f"Layer input and output shapes must not be disjoint. {first.out_size} - {second.in_size}"
+            if not isinstance(first, Layer) or not isinstance(second, Layer):
+                raise InvalidDataException(
+                    f"All values inside of list must be a descendant class of Layer. - {first}, {second}"
+                )
+            if not self.__verify_shapes(first, second):
+                raise InvalidDataException(
+                    f"Layer input and output shapes must not be disjoint. {first.out_size} - {second.in_size}"
+                )
 
         in_size = self.layers[0].in_size
         out_size = None
@@ -99,12 +107,15 @@ class Sequence(Layer):
 
         Raises
         ------
-        AssertionError
+        InvalidDataException
             If the new layer provided does not take the same general input shape as the current last
-            layer in this `Sequence`, then an error is raised.
+            layer in this `Sequence`, or if it is not a descendant of the Caspian `Layer` class,
+            then an error is raised.
         """
-        assert self.__verify_shapes(self.layers[-1], new_layer), \
-               "Layer input and output shapes must not be disjoint."
+        if not isinstance(new_layer, Layer):
+            raise InvalidDataException("New sequence addition must be a descendant of the Layer class.")
+        if not self.__verify_shapes(self.layers[-1], new_layer):
+            raise InvalidDataException("Layer input and output shapes must not be disjoint.")
         self.layers.append(new_layer)
         self.num_layers += 1
         self.out_size = new_layer.out_size if new_layer.out_size is not None else self.out_size

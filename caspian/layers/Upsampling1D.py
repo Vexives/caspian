@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import InvalidDataException
 
 class Upsampling1D(Layer):
     """
@@ -30,9 +31,15 @@ class Upsampling1D(Layer):
         ----------
         rate : int
             The multiplicative size scaling rate of this layer.
+
+        Raises
+        ------
+        InvalidDataException
+            If the rate provided to the layer is either not an integer or not greater than 0.
         """
         super().__init__(None, None)
-        assert rate > 1, "Upsampling rate must be at least 2."
+        if not isinstance(rate, int) or rate < 1:
+            raise InvalidDataException("Upsampling rate must be an integer of least 1.")
         self.rate = rate
     
 
