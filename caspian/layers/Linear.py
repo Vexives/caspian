@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import all_positive, all_ints, InvalidDataException
+from ..utilities import all_positive, check_types
 
 class Linear(Layer):
     """
@@ -42,6 +42,10 @@ class Linear(Layer):
     >>> print(out_arr.shape)
     (5,)
     """
+    @check_types([
+                  ("inputs", all_positive, "Argument \"inputs\" must contain all values greater than 0."),
+                  ("outputs", lambda x: x > 0, "Argument \"outputs\" must be greater than 0.")
+                  ])
     def __init__(self, inputs: tuple[int, ...] | int, outputs: int, biases: bool = False,
                  optimizer: Optimizer = StandardGD()) -> None:
         """
@@ -67,14 +71,6 @@ class Linear(Layer):
         """
         in_size = inputs if isinstance(inputs, tuple) else (inputs,)
         out_size = (*in_size[:-1], outputs,)
-        if not all_ints(in_size):
-            raise InvalidDataException(f"Input sizes must be integers. - {in_size}")
-        if not all_positive(in_size): 
-            raise InvalidDataException(f"All input sizes must be greater than 0. - {in_size}")
-        if not isinstance(outputs, int):
-            raise InvalidDataException("Output value must be an integer.")
-        if outputs < 1:
-            raise InvalidDataException("Output value must be greater than or equal to one.")
         super().__init__(in_size, out_size)
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, in_size[-1]))
@@ -245,7 +241,7 @@ class Linear(Layer):
             biases = np.array(list(map(float, bias_info.split()))).reshape((out_size, 1)) \
                              if bias_info != "None" else None
 
-            new_neuron = Linear(in_size, out_size, opt)
+            new_neuron = Linear(in_size, out_size, bias_info == "None", opt)
             new_neuron.layer_weight = weights
             new_neuron.bias_weight = biases
             return new_neuron

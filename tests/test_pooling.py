@@ -6,11 +6,11 @@ import pytest
 
 def test_pooling1D():
     # Incorrect sizes
-    with pytest.raises(TypeError):
-        layer = Pooling1D(None, 2, 5)
+    with pytest.raises(InvalidDataException):
+        layer = Pooling1D(Maximum(), 2, 5)
 
-    with pytest.raises(IndexError):
-        layer = Pooling1D(None, 2, (5,))
+    with pytest.raises(InvalidDataException):
+        layer = Pooling1D(Maximum(), 2, (5,))
 
 
     # Inference mode grad variables
@@ -55,22 +55,25 @@ def test_pooling1D():
 
     # Type failure checking
     with pytest.raises(InvalidDataException):
-        layer = Pooling1D(None, 1.1, (2, 10))
-
-    with pytest.raises(InvalidDataException):
-        layer = Pooling1D(None, 1.1, (2,))
+        layer = Pooling1D(Maximum(), 1.1, (2, 10))
     
     with pytest.raises(InvalidDataException):
-        layer = Pooling1D(None, 1, "test")
+        layer = Pooling1D(Maximum(), 1, "test")
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling1D(None, 2, (2, 10), "c")
+        layer = Pooling1D(Maximum(), 2, (2, 10), "c")
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling1D(None, 2, (2, 10), 0)
+        layer = Pooling1D(Maximum(), 2, (2, 10), 0)
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling1D(None, 2, (2, 10), 1, -1)
+        layer = Pooling1D(Maximum(), 2, (2, 10), 1, -1)
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling1D(None, 2, (2, 10))
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling1D(Maximum(), 2, (-1, -1, -1))
  
     
     # Incorrect shape tests
@@ -111,11 +114,11 @@ def test_pooling1D():
 
 def test_pooling2D():
     # Incorrect sizes
-    with pytest.raises(TypeError):
-        layer = Pooling2D(None, 2, 5)
+    with pytest.raises(InvalidDataException):
+        layer = Pooling2D(Maximum(), 2, 5)
 
-    with pytest.raises(IndexError):
-        layer = Pooling1D(None, 2, (5,))
+    with pytest.raises(InvalidDataException):
+        layer = Pooling1D(Maximum(), 2, (5,))
 
 
     # Inference mode grad variables
@@ -160,25 +163,28 @@ def test_pooling2D():
 
     # Type failure checking
     with pytest.raises(InvalidDataException):
-        layer = Pooling2D(None, 1.1, (2, 10, 10))
-
-    with pytest.raises(IndexError):
-        layer = Pooling2D(None, 1, (2, 10))
+        layer = Pooling2D(Maximum(), 1.1, (2, 10, 10))
     
     with pytest.raises(InvalidDataException):
-        layer = Pooling2D(None, 1, "test")
+        layer = Pooling2D(Maximum(), 1, "test")
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling2D(None, 2, (2, 10, 10), "c")
+        layer = Pooling2D(Maximum(), 2, (2, 10, 10), "c")
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling2D(None, 2, (2, 10, 10), 0)
-
-    with pytest.raises(ValueError):
-        layer = Pooling2D(None, 1, (2, 10, 10), (2,))
+        layer = Pooling2D(Maximum(), 2, (2, 10, 10), 0)
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling2D(None, 2, (2, 10, 10), 1, -1)
+        layer = Pooling2D(Maximum(), 1, (2, 10, 10), (2,))
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling2D(Maximum(), 2, (2, 10, 10), 1, -1)
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling2D(None, 2, (2, 10, 10))
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling2D(Maximum(), 2, (-2, 10, 10))
  
 
     # Incorrect shape tests
@@ -225,11 +231,11 @@ def test_pooling2D():
 
 def test_pooling3D():
     # Incorrect sizes
-    with pytest.raises(TypeError):
-        layer = Pooling3D(None, 2, 5)
+    with pytest.raises(InvalidDataException):
+        layer = Pooling3D(Maximum(), 2, 5)
 
-    with pytest.raises(IndexError):
-        layer = Pooling3D(None, 2, (5,))
+    with pytest.raises(InvalidDataException):
+        layer = Pooling3D(Maximum(), 2, (5,))
 
 
     # Inference mode grad variables
@@ -274,25 +280,25 @@ def test_pooling3D():
 
     # Type failure checking
     with pytest.raises(InvalidDataException):
-        layer = Pooling3D(None, 1.1, (2, 10, 10, 10))
-
-    with pytest.raises(IndexError):
-        layer = Pooling3D(None, 1, (2, 10, 10))
+        layer = Pooling3D(Maximum(), 1.1, (2, 10, 10, 10))
     
     with pytest.raises(InvalidDataException):
-        layer = Pooling3D(None, 1, "test")
+        layer = Pooling3D(Maximum(), 1, "test")
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling3D(None, 2, (2, 10, 10, 10), "c")
-
-    with pytest.raises(ValueError):
-        layer = Pooling3D(None, 1, (2, 10, 10), (2,))
+        layer = Pooling3D(Maximum(), 2, (2, 10, 10, 10), "c")
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling3D(None, 2, (2, 10, 10, 10), 0)
+        layer = Pooling3D(Maximum(), 1, (2, 10, 10), (2,))
 
     with pytest.raises(InvalidDataException):
-        layer = Pooling3D(None, 2, (2, 10, 10, 10), 1, -1)
+        layer = Pooling3D(Maximum(), 2, (2, 10, 10, 10), 0)
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling3D(Maximum(), 2, (2, 10, 10, 10), 1, -1)
+
+    with pytest.raises(InvalidDataException):
+        layer = Pooling3D(None, 2, (2, 10, 10, 10))
  
 
     # Incorrect shape tests

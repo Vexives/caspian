@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Layer
-from ..utilities import ShapeIncompatibilityException
+from ..utilities import check_types, ShapeIncompatibilityException
 
 class Reshape(Layer):
     """
@@ -26,6 +26,7 @@ class Reshape(Layer):
     >>> print(out_arr.shape)
     (50, 10)
     """
+    @check_types()
     def __init__(self, input_size: tuple[int, ...], output_size: tuple[int, ...]) -> None:
         """
         Initializes a `Reshape` layer using given parameters.

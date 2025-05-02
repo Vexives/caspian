@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
+from ..utilities import check_types, all_positive
 
 class LayerNorm(Layer):
     """
@@ -43,6 +44,10 @@ class LayerNorm(Layer):
     [[ 0.51179302  0.31993403  0.31220338 -0.00582093 -0.03786925]
      [ 0.04312625 -0.15719677 -0.38710092 -0.18183973 -0.57738105]]
     """
+    @check_types([
+                  ("input_size", all_positive, "Argument \"input_size\" must contain all values above 0."),
+                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be above 0.0.")
+                  ])
     def __init__(self, input_size: tuple[int, ...], weights: bool = True,
                  biases: bool = True, var_eps: float = 1e-8,
                  optimizer: Optimizer = StandardGD()):

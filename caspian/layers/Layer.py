@@ -1,6 +1,6 @@
 from ..cudalib import np
 from ..optimizers import Optimizer
-from ..utilities import all_ints, InvalidDataException
+from ..utilities import all_ints, check_types, InvalidDataException
 
 class Layer():
     '''
@@ -9,11 +9,11 @@ class Layer():
     
     Performs no operations and takes no arguments.
     '''
-    def __init__(self, in_size: tuple[int, ...], out_size: tuple[int, ...]):
-        if not all_ints(in_size): 
-            raise InvalidDataException("Incorrect input shape type - Must be all integers.")
-        if not all_ints(out_size): 
-            raise InvalidDataException("Incorrect output shape type - Must be all integers.")
+    @check_types([
+                  ("in_size", all_ints, "Incorrect input shape type - Must be all integers."),
+                  ("out_size", all_ints, "Incorrect output shape type - Must be all integers.")
+                  ])
+    def __init__(self, in_size: tuple[int, ...] | None, out_size: tuple[int, ...] | None):
         self.in_size = in_size
         self.out_size = out_size
 

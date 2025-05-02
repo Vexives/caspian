@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
+from ..utilities import check_types
 
 class BatchNorm(Layer):
     """
@@ -51,10 +52,15 @@ class BatchNorm(Layer):
     >>> print(out_arr)
     [-1.41421356 -0.70710678  0.          0.70710678  1.41421356]
     """
-
+    @check_types([
+                  ("channels", lambda x: x > 0, "Argument \"channels\" must be greater than 0."),
+                  ("dimensions", lambda x: x > 0, "Argument \"dimensions\" must be greater than 0."),
+                  ("momentum", lambda x: 0.0 < x < 1.0, "Argument \"momentum\" must be between 0.0 and 1.0."),
+                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be greater than 0.0.")
+                  ])
     def __init__(self, channels: int, dimensions: int, 
                  scale: bool = True, shift: bool = True, 
-                 momentum: float = 0.9, axis: int = 1,
+                 momentum: float | None = 0.9, axis: int = 1,
                  var_eps: float = 1e-8, optimizer: Optimizer = StandardGD()) -> None:
         """
         Initializes a `BatchNorm` layer using given parameters.
@@ -66,7 +72,7 @@ class BatchNorm(Layer):
         dimensions : int
             The number of dimensions that this layer should expect from the inputs and gradients given.
             The batch dimension is NOT counted in this number.
-        momentum : float, default: 0.9
+        momentum : float | None, default: 0.9
             The momentum of the running mean and variance of this layer. Set to `None` for the running
             variables to not be used.
         axis : int, default: 1

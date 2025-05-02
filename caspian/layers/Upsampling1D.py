@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Layer
-from ..utilities import InvalidDataException
+from ..utilities import check_types
 
 class Upsampling1D(Layer):
     """
@@ -23,6 +23,9 @@ class Upsampling1D(Layer):
     >>> print(out_arr.shape)
     (2, 30)
     """
+    @check_types([
+                  ("rate", lambda x: x > 0, "Argument \"rate\" must be at least 1.")
+                ])
     def __init__(self, rate: int):
         """
         Initializes an `Upsampling1D` layer using given parameters.
@@ -38,8 +41,6 @@ class Upsampling1D(Layer):
             If the rate provided to the layer is either not an integer or not greater than 0.
         """
         super().__init__(None, None)
-        if not isinstance(rate, int) or rate < 1:
-            raise InvalidDataException("Upsampling rate must be an integer of least 1.")
         self.rate = rate
     
 

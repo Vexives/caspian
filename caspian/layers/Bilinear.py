@@ -2,7 +2,7 @@ from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
-from ..utilities import all_positive, all_ints, InvalidDataException, ShapeIncompatibilityException
+from ..utilities import all_positive, all_ints, check_types, ShapeIncompatibilityException
 
 class Bilinear(Layer):
     """
@@ -54,7 +54,13 @@ class Bilinear(Layer):
     >>> print(out_arr.shape)
     (5,)
     """
-
+    @check_types([
+                  ("inputs_1", all_ints, "Incorrect first input shape type - Must be all integers."),
+                  ("inputs_1", all_positive, "First input sizes must all be greater than 0."),
+                  ("inputs_2", all_ints, "Incorrect second input shape type - Must be all integers."),
+                  ("inputs_1", all_positive, "Second input sizes must all be greater than 0."),
+                  ("outputs", lambda x: x > 0, "Output size must be greater than 0.")
+                  ])
     def __init__(self, funct: Activation, inputs_1: tuple[int, ...] | int,
                  inputs_2: tuple[int, ...] | int, outputs: int, 
                  optimizer: Optimizer = StandardGD()):
@@ -82,16 +88,6 @@ class Bilinear(Layer):
         if first_ins[:-1] != second_ins[:-1]:
             raise ShapeIncompatibilityException(
                 f"Input shape must be equal except for last dimension: {first_ins} - {second_ins}")
-        if not all_ints(first_ins): 
-            raise InvalidDataException("Incorrect first input shape type - Must be all integers.")
-        if not all_ints(second_ins): 
-            raise InvalidDataException("Incorrect second input shape type - Must be all integers.")
-        if not all_positive(first_ins): 
-            raise InvalidDataException(f"All input sizes must be greater than 0. - {first_ins}")
-        if not all_positive(second_ins): 
-            raise InvalidDataException(f"All input sizes must be greater than 0. - {second_ins}")
-        if outputs < 1 or not isinstance(outputs, int):
-            raise InvalidDataException("Output value must be greater than or equal to one.")
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, first_ins[-1], second_ins[-1]))
         self.bias_weight = np.zeros((outputs,))

@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import all_ints, all_positive, InvalidDataException
+from ..utilities import check_types
 
 class Embedding(Layer):
     """
@@ -34,6 +34,10 @@ class Embedding(Layer):
     >>> print(out_arr.shape)
     (12, 5)
     """
+    @check_types([
+                  ("vocab_len", lambda x: x > 0, "Argument \"vocab_len\" must be greater than 0."),
+                  ("embed_size", lambda x: x > 0, "Argument \"embed_size\" must be greater than 0.")
+                  ])
     def __init__(self, vocab_len: int, embed_size: int,
                  optimizer: Optimizer = StandardGD()):
         """
@@ -51,10 +55,6 @@ class Embedding(Layer):
             gradient descent path.
         """
         super().__init__(None, None)
-        if not all_ints(new_vars := (vocab_len, embed_size)): 
-            raise InvalidDataException("Incorrect output shape type - Must be all integers.")
-        if not all_positive(new_vars): 
-            raise InvalidDataException("Vocab length and embedding size must both be greater than 0.")
         self.v_len = vocab_len
         self.e_len = embed_size
         self.embed_table = np.random.uniform(-0.5, 0.5, (vocab_len, embed_size))

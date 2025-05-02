@@ -9,3 +9,7 @@ class InvalidDataException(Exception):
 class ShapeIncompatibilityException(Exception):
     def __init__(self, message: str):
         super().__init__(message)
+
+class BackwardSequenceException(Exception):
+    def __init__(self, message: str):
+        super().__init__(message)

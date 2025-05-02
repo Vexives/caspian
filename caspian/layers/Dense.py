@@ -2,6 +2,7 @@ from ..cudalib import np
 from . import Linear
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
+from ..utilities import check_types
 
 class Dense(Linear):
     """
@@ -45,6 +46,7 @@ class Dense(Linear):
     >>> print(out_arr.shape)
     (5,)
     """
+    @check_types()
     def __init__(self, funct: Activation, inputs: tuple[int, ...] | int, outputs: int, 
                  optimizer: Optimizer = StandardGD()) -> None:
         """

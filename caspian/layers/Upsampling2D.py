@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Layer
-from ..utilities import all_ints, all_positive, InvalidDataException
+from ..utilities import all_ints, all_positive, check_types
 
 class Upsampling2D(Layer):
     """
@@ -23,6 +23,11 @@ class Upsampling2D(Layer):
     >>> print(out_arr.shape)
     (2, 30, 10)
     """
+    @check_types([
+                  ("rate", all_ints, "Argument \"rate\" must be an integer or tuple of integers."),
+                  ("rate", all_positive, "Argument \"rate\" must have all values above 0."),
+                  ("rate", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"rate\" must have a length of 2.")
+                ])
     def __init__(self, rate: tuple[int, int] | int):
         """
         Initializes an `Upsampling2D` layer using given parameters.
@@ -40,10 +45,6 @@ class Upsampling2D(Layer):
             any value not greater than 0.
         """
         super().__init__(None, None)
-        if not all_ints(rate) or not all_positive(rate):
-            raise InvalidDataException("Upsampling rate must be an integer or tuple of integers greater than 0.")
-        if isinstance(rate, tuple) and len(rate) != 2:
-            raise InvalidDataException(f"Upsampling rate length must match the number of dimensions. - {rate}")
         self.rate = rate if isinstance(rate, tuple) else (rate, rate)
     
 

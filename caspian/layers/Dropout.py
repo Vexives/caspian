@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Layer
-from ..utilities import InvalidDataException, ShapeIncompatibilityException
+from ..utilities import check_types, ShapeIncompatibilityException
 
 class Dropout(Layer):
     """
@@ -24,6 +24,9 @@ class Dropout(Layer):
     >>> print(out_arr)
     [0 1 2 0 4]
     """
+    @check_types([
+                   ("drop_chance", lambda x: 0.0 < x < 1.0, "Argument \"drop_chance\" must be between 0.0 and 1.0.")
+                  ])
     def __init__(self, drop_chance: float = 0.7) -> None:
         """
         Initializes a `Dropout` layer using given parameters.
@@ -33,8 +36,6 @@ class Dropout(Layer):
         drop_chance : float
             A float representing the dropout chance for each point in the expected input arrays.
         """
-        if not isinstance(drop_chance, float) or not (0.0 < drop_chance < 1.0):
-            raise InvalidDataException(f"Chance must be below 1.0 and above 0.0. - {drop_chance}")
         super().__init__(None, None)
         self.chance = drop_chance
         self.__drop_mask = None

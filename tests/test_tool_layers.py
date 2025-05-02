@@ -1,6 +1,6 @@
-from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear
+from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear, Bilinear
 from caspian.activations import ReLU, Identity
-from caspian.utilities import InvalidDataException, ShapeIncompatibilityException
+from caspian.utilities import InvalidDataException, ShapeIncompatibilityException, BackwardSequenceException
 import numpy as np
 import pytest
 
@@ -84,7 +84,7 @@ def test_reshape():
     with pytest.raises(ShapeIncompatibilityException):
         _ = Reshape((5, 5, 5), (0, 5, 5, 5))
 
-    with pytest.raises(ShapeIncompatibilityException):
+    with pytest.raises(InvalidDataException):
         _ = Reshape("test", (5, 5, 5))
 
 
@@ -146,15 +146,59 @@ def test_sequence():
     with pytest.raises(InvalidDataException):
         layer += 1.1
 
+    
+    # Non-Sequentiable layer test
+    with pytest.raises(InvalidDataException):
+        _ = Sequence([Bilinear(Identity(), 3, 5, 8)])
+
 
     # General usage tests
     layer = Sequence([Linear(5, 3), Linear(3, 6), Linear(6, 8)])
     data_in = np.zeros((5,))
     assert layer(data_in).shape == (8,)
+    assert layer.in_size == (5,)
+    assert layer.out_size == (8,)
+    assert layer.num_layers == 3
 
-    #TODO:
-    #TODO:
-    #TODO:
+    layer = Sequence([Upsampling2D(3), Upsampling2D(2)])
+    data_in = np.zeros((3, 3, 3))
+    assert layer(data_in).shape == (3, 18, 18)
+    assert layer.in_size == None
+    assert layer.out_size == None
+    assert layer.num_layers == 2
+
+
+    # Backwards pass testing
+    layer = Sequence([Linear(5, 3, True), Linear(3, 6, True), Linear(6, 8, True)])
+    data_in = np.zeros((5,))
+    data_out = np.zeros((8,))
+    with pytest.raises(BackwardSequenceException):
+        _ = layer.backward(data_out)
+
+    _ = layer(data_in)
+    with pytest.raises(BackwardSequenceException):
+        _ = layer.backward(data_out)
+
+    _ = layer(data_in, True)
+    result = layer.backward(data_out)
+    assert result.shape == (5,)
+
+
+    # Deepcopy
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert all(l2 is not l1 for l2, l1 in zip(layer2.layers, layer.layers))
+
+
+    # Saving
+    context = layer.save_to_file()
+    layer2 = Sequence.from_save(context)
+    assert layer2.num_layers == 3
+    assert layer2.in_size == layer.in_size
+    assert layer2.out_size == layer.out_size
+    assert all(isinstance(l, Linear) for l in layer2.layers)
+    assert all(np.allclose(l2.layer_weight, l1.layer_weight) for l2, l1 in zip(layer2.layers, layer.layers))
+    assert all(np.allclose(l2.bias_weight, l1.bias_weight) for l2, l1 in zip(layer2.layers, layer.layers))
 
 
 

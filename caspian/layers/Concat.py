@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Layer
-from ..utilities import InvalidDataException
+from ..utilities import check_types, InvalidDataException
 
 class Concat(Layer):
     '''
@@ -23,6 +23,7 @@ class Concat(Layer):
     axis : int
         The axis at which each given array will be concatenated.
     '''
+    @check_types()
     def __init__(self, axis: int = 0):
         """
         Initializes a `Concat` layer with given axis parameter.

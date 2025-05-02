@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..activations import Activation, parse_act_info
-from ..utilities import InvalidDataException
+from ..utilities import check_types
 
 class Container(Layer):
     '''
@@ -29,6 +29,7 @@ class Container(Layer):
     >>> print(out_arr)
     [ 0.42778123  0.          0.          0.11093225  0.        ]
     '''
+    @check_types()
     def __init__(self, funct: Activation):
         """
         Initializes a `Container` layer using given parameters.
@@ -41,8 +42,6 @@ class Container(Layer):
         inputs : int | tuple[int, ...]
             An integer or tuple of integers matching the shape of the expected input arrays.
         """
-        if not isinstance(funct, Activation):
-            raise InvalidDataException("Function for container must be a Caspian \'Activation\' class.")
         super().__init__(None, None)
         self.funct = funct
     

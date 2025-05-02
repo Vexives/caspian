@@ -1,5 +1,5 @@
 from caspian.layers import Layer, Linear, Dense, Bilinear, Embedding
-from caspian.activations import ReLU
+from caspian.activations import ReLU, Identity
 from caspian.utilities import InvalidDataException, ShapeIncompatibilityException
 import pytest
 import numpy as np
@@ -96,9 +96,8 @@ def test_linear():
     with pytest.raises(InvalidDataException):
         layer = Linear((-1, 2), 2)
 
-    with pytest.raises(AttributeError):
+    with pytest.raises(InvalidDataException):
         layer = Linear(1, 2, biases=3)
-        _ = layer.bias_weight.shape
 
 
     # Incorrect sizing
@@ -189,21 +188,19 @@ def test_dense():
 
     # Type failure checking
     with pytest.raises(InvalidDataException):
-        layer = Dense(None, 1.1, 2)
+        layer = Dense(Identity(), 1.1, 2)
     
     with pytest.raises(InvalidDataException):
-        layer = Dense(None, 1, 2.2)
+        layer = Dense(Identity(), 1, 2.2)
 
     with pytest.raises(InvalidDataException):
-        layer = Dense(None, -1, 2)
+        layer = Dense(Identity(), -1, 2)
 
     with pytest.raises(InvalidDataException):
-        layer = Dense(None, (-1, 2), 2)
+        layer = Dense(Identity(), (-1, 2), 2)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         layer = Dense(None, 3, 2)
-        data_in = np.zeros((3,))
-        _ = layer(data_in)
 
 
     # Incorrect sizing
@@ -305,25 +302,22 @@ def test_bilinear():
 
     # Type failure checking
     with pytest.raises(InvalidDataException):
-        layer = Bilinear(None, 1.1, 1, 2)
+        layer = Bilinear(Identity(), 1.1, 1, 2)
     
     with pytest.raises(InvalidDataException):
-        layer = Bilinear(None, 1, 1.1, 2)
+        layer = Bilinear(Identity(), 1, 1.1, 2)
 
     with pytest.raises(InvalidDataException):
-        layer = Bilinear(None, 1, 1, 2.2)
+        layer = Bilinear(Identity(), 1, 1, 2.2)
 
     with pytest.raises(InvalidDataException):
-        layer = Bilinear(None, -1, -1, 2)
+        layer = Bilinear(Identity(), -1, -1, 2)
 
     with pytest.raises(InvalidDataException):
-        layer = Bilinear(None, (-1, 2), (-1, 2), 2)
+        layer = Bilinear(Identity(), (-1, 2), (-1, 2), 2)
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidDataException):
         layer = Bilinear(None, 2, 3, 2)
-        data_1 = np.zeros((2,))
-        data_2 = np.zeros((3,))
-        _ = layer(data_1, data_2)
 
     with pytest.raises(ValueError):
         layer = Bilinear(ReLU(), (11, 2), (11, 3), 2)

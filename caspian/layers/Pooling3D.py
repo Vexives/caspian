@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
-from ..utilities import all_positive, all_ints, confirm_shape, \
+from ..utilities import all_positive, all_ints, confirm_shape, check_types, \
                         UnsafeMemoryAccessException, InvalidDataException
 
 class Pooling3D(Layer):
@@ -58,6 +58,22 @@ class Pooling3D(Layer):
     >>> print(out_arr.shape)
     (5, 3, 4, 2)
     """
+    @check_types([
+                  ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
+                  ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
+                  ("kernel_size", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"kernel_size\" must have a length of 3."),
+
+                  ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                  ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                  ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
+
+                  ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                  ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                  ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
+
+                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                  ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4.")
+                ])
     def __init__(self, pool_funct: PoolFunc, kernel_size: tuple[int, int, int] | int, 
                  input_size: tuple[int, int, int, int], 
                  strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0) -> None:
@@ -86,36 +102,23 @@ class Pooling3D(Layer):
         ------
         InvalidDataException
             If any of the data provided is not an integer or tuple of integers, or less than one 
-            (with the exception of padding, which can be 0). Expected input size must be a tuple of integers.
+            (with the exception of padding, which can be 0). Expected input size must be a tuple of integers, and
+            the pooling function must be of type `PoolFunc`.
         """
         #Pooling function
         self.funct = pool_funct
 
         #Strides and Kernel size initialization
-        if not all_ints(strides):
-            raise InvalidDataException("Strides must be all integers.")
-        if not all_ints(kernel_size):
-            raise InvalidDataException("Kernel size must be all integers.")
-        if not all_positive(strides): 
-            raise InvalidDataException(f"Strides must be greater than or equal to one for all dimensions. - {strides}")
-        if not all_positive(kernel_size): 
-            raise InvalidDataException(f"Kernel size must be greater than or equal to one for all dimensions. - {kernel_size}")
         self.stride_d, self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides, strides)
         self.kernel_depth, self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size, kernel_size)
 
         #Padding size initialization
-        if not all_ints(padding):
-            raise InvalidDataException("Padding must be all integers.")
-        if not all_positive(padding, True):
-            raise InvalidDataException(f"Padding must be greater than or equal to zero for all dimensions. - {padding}")
         self.pad_depth, self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding, padding)
         self.pad_front, self.pad_back = ((self.pad_depth+1)//2, self.pad_depth//2)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
 
         #Out-shape and sliding window shape initialization
-        if not all_positive(input_size): 
-            raise InvalidDataException(f"Input shape contents must all be of size 0 or above. - {input_size}")
         in_size = input_size
         out_size = (in_size[0],
                     (in_size[1] - self.kernel_depth + self.pad_depth) // self.stride_d + 1,
