@@ -47,9 +47,7 @@ class Sequence(Layer):
     >>> print(out_arr.shape)
     (20,)
     """
-    @check_types([
-                  ("layers", lambda x: len(x) > 0, "Argument \"layers\" must have a length of at least 1.")
-                ])
+    @check_types(("layers", lambda x: len(x) > 0, "Argument \"layers\" must have a length of at least 1."))
     def __init__(self, layers: list[Layer] | Layer, optimizer: Optimizer = StandardGD()):
         """
         Initializes a `Sequence` layer using given parameters.

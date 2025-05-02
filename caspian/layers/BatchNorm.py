@@ -52,12 +52,10 @@ class BatchNorm(Layer):
     >>> print(out_arr)
     [-1.41421356 -0.70710678  0.          0.70710678  1.41421356]
     """
-    @check_types([
-                  ("channels", lambda x: x > 0, "Argument \"channels\" must be greater than 0."),
-                  ("dimensions", lambda x: x > 0, "Argument \"dimensions\" must be greater than 0."),
-                  ("momentum", lambda x: 0.0 < x < 1.0, "Argument \"momentum\" must be between 0.0 and 1.0."),
-                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be greater than 0.0.")
-                  ])
+    @check_types(("channels", lambda x: x > 0, "Argument \"channels\" must be greater than 0."),
+                 ("dimensions", lambda x: x > 0, "Argument \"dimensions\" must be greater than 0."),
+                 ("momentum", lambda x: 0.0 < x < 1.0, "Argument \"momentum\" must be between 0.0 and 1.0."),
+                 ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be greater than 0.0."))
     def __init__(self, channels: int, dimensions: int, 
                  scale: bool = True, shift: bool = True, 
                  momentum: float | None = 0.9, axis: int = 1,

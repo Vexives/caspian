@@ -42,10 +42,8 @@ class Linear(Layer):
     >>> print(out_arr.shape)
     (5,)
     """
-    @check_types([
-                  ("inputs", all_positive, "Argument \"inputs\" must contain all values greater than 0."),
-                  ("outputs", lambda x: x > 0, "Argument \"outputs\" must be greater than 0.")
-                  ])
+    @check_types(("inputs", all_positive, "Argument \"inputs\" must contain all values greater than 0."),
+                 ("outputs", lambda x: x > 0, "Argument \"outputs\" must be greater than 0."))
     def __init__(self, inputs: tuple[int, ...] | int, outputs: int, biases: bool = False,
                  optimizer: Optimizer = StandardGD()) -> None:
         """

@@ -530,24 +530,22 @@ class Conv3DTranspose(Conv3D):
     
 
     @staticmethod
-    @check_types([
-                  ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
-                  ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
-                  ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
+    @check_types(("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                 ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                 ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
 
-                  ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
-                  ("padding", all_ints, "Argument \"padding\" must contain all integers."),
-                  ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
+                 ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                 ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                 ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
 
-                  ("out_padding", lambda x: all_positive(x, True), "Argument \"out_padding\" must be greater than or equal to 0."),
-                  ("out_padding", all_ints, "Argument \"out_padding\" must contain all integers."),
-                  ("out_padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"out_padding\" must have a length of 3."),
+                 ("out_padding", lambda x: all_positive(x, True), "Argument \"out_padding\" must be greater than or equal to 0."),
+                 ("out_padding", all_ints, "Argument \"out_padding\" must contain all integers."),
+                 ("out_padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"out_padding\" must have a length of 3."),
 
-                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."),
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."),
 
-                  ("kernel", lambda x: len(x.shape) == 5, "Argument \"kernel\" must have dimension shape of 5.")
-                ])
+                 ("kernel", lambda x: len(x.shape) == 5, "Argument \"kernel\" must have dimension shape of 5."))
     def from_kernel(funct: Activation, input_size: tuple[int, int, int, int], 
                     kernel: np.ndarray,strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 
                     out_padding: tuple[int, int, int] | int = 0, bias: np.ndarray = None, 

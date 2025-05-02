@@ -65,15 +65,13 @@ class Conv1DTranspose(Conv1D):
     >>> print(out_arr.shape)
     (1, 3, 11)
     """
-    @check_types([
-                  ("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
-                  ("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to zero."),
-                  ("out_padding", lambda x: x >= 0, "Argument \"out_padding\" must be greater than or equal to zero."),
-                  ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than or equal to one."),
-                  ("kernel_size", lambda x: x > 0, "Argument \"kernel_size\" must be greater than or equal to one."),
-                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2.")
-                ])
+    @check_types(("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
+                 ("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to zero."),
+                 ("out_padding", lambda x: x >= 0, "Argument \"out_padding\" must be greater than or equal to zero."),
+                 ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than or equal to one."),
+                 ("kernel_size", lambda x: x > 0, "Argument \"kernel_size\" must be greater than or equal to one."),
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2."))
     def __init__(self, funct: Activation, layers: int, kernel_size: int, 
                  input_size: tuple[int, int], strides: int = 1, 
                  padding: int = 0, out_padding: int = 0,
@@ -441,14 +439,12 @@ class Conv1DTranspose(Conv1D):
     
 
     @staticmethod
-    @check_types([
-                  ("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to zero."),
-                  ("out_padding", lambda x: x >= 0, "Argument \"out_padding\" must be greater than or equal to zero."),
-                  ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than or equal to one."),
-                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2."),
-                  ("kernel", lambda x: len(x.shape) == 3, "Argument \"kernel\" must have dimension shape of 3.")
-                ])
+    @check_types(("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to zero."),
+                 ("out_padding", lambda x: x >= 0, "Argument \"out_padding\" must be greater than or equal to zero."),
+                 ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than or equal to one."),
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2."),
+                 ("kernel", lambda x: len(x.shape) == 3, "Argument \"kernel\" must have dimension shape of 3."))
     def from_kernel(funct: Activation, input_size: tuple[int, int], 
                     kernel: np.ndarray, strides: int = 1, padding: int = 0, out_padding: int = 0, 
                     bias: np.ndarray = None, optimizer: Optimizer = StandardGD()) -> 'Conv1D':

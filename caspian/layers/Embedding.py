@@ -34,10 +34,8 @@ class Embedding(Layer):
     >>> print(out_arr.shape)
     (12, 5)
     """
-    @check_types([
-                  ("vocab_len", lambda x: x > 0, "Argument \"vocab_len\" must be greater than 0."),
-                  ("embed_size", lambda x: x > 0, "Argument \"embed_size\" must be greater than 0.")
-                  ])
+    @check_types(("vocab_len", lambda x: x > 0, "Argument \"vocab_len\" must be greater than 0."),
+                 ("embed_size", lambda x: x > 0, "Argument \"embed_size\" must be greater than 0."))
     def __init__(self, vocab_len: int, embed_size: int,
                  optimizer: Optimizer = StandardGD()):
         """

@@ -54,13 +54,11 @@ class Bilinear(Layer):
     >>> print(out_arr.shape)
     (5,)
     """
-    @check_types([
-                  ("inputs_1", all_ints, "Incorrect first input shape type - Must be all integers."),
-                  ("inputs_1", all_positive, "First input sizes must all be greater than 0."),
-                  ("inputs_2", all_ints, "Incorrect second input shape type - Must be all integers."),
-                  ("inputs_1", all_positive, "Second input sizes must all be greater than 0."),
-                  ("outputs", lambda x: x > 0, "Output size must be greater than 0.")
-                  ])
+    @check_types(("inputs_1", all_ints, "Incorrect first input shape type - Must be all integers."),
+                 ("inputs_1", all_positive, "First input sizes must all be greater than 0."),
+                 ("inputs_2", all_ints, "Incorrect second input shape type - Must be all integers."),
+                 ("inputs_1", all_positive, "Second input sizes must all be greater than 0."),
+                 ("outputs", lambda x: x > 0, "Output size must be greater than 0."))
     def __init__(self, funct: Activation, inputs_1: tuple[int, ...] | int,
                  inputs_2: tuple[int, ...] | int, outputs: int, 
                  optimizer: Optimizer = StandardGD()):

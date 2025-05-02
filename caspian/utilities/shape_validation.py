@@ -43,8 +43,7 @@ def all_positive(contents: tuple | int | float, include_zero: bool = False) -> b
         return False
     
 
-def check_types(rules: list[tuple[str, callable, str]] = None) -> callable:
-    rules = rules or []
+def check_types(*rules: tuple[tuple[str, callable, str]]) -> callable:
     def parse_union(uniontype) -> UnionType:
         # Set origin to every subclass
         new_args = tuple(get_origin(arg) or arg 

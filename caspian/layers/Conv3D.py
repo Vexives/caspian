@@ -72,24 +72,22 @@ class Conv3D(Layer):
     >>> print(out_arr.shape)
     (1, 2, 7, 8, 6)
     """
-    @check_types([
-                  ("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
+    @check_types(("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
 
-                  ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
-                  ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
-                  ("kernel_size", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"kernel_size\" must have a length of 3."),
+                 ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
+                 ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
+                 ("kernel_size", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"kernel_size\" must have a length of 3."),
 
-                  ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
-                  ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
-                  ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
+                 ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                 ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                 ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
 
-                  ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
-                  ("padding", all_ints, "Argument \"padding\" must contain all integers."),
-                  ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
+                 ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                 ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                 ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
 
-                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4.")
-                ])
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."))
     def __init__(self, funct: Activation, layers: int, kernel_size: tuple[int, int, int] | int, 
                  input_size: tuple[int, int, int, int], 
                  strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 

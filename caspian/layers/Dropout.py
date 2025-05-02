@@ -24,9 +24,7 @@ class Dropout(Layer):
     >>> print(out_arr)
     [0 1 2 0 4]
     """
-    @check_types([
-                   ("drop_chance", lambda x: 0.0 < x < 1.0, "Argument \"drop_chance\" must be between 0.0 and 1.0.")
-                  ])
+    @check_types(("drop_chance", lambda x: 0.0 < x < 1.0, "Argument \"drop_chance\" must be between 0.0 and 1.0."))
     def __init__(self, drop_chance: float = 0.7) -> None:
         """
         Initializes a `Dropout` layer using given parameters.

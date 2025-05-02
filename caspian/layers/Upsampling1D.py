@@ -23,9 +23,7 @@ class Upsampling1D(Layer):
     >>> print(out_arr.shape)
     (2, 30)
     """
-    @check_types([
-                  ("rate", lambda x: x > 0, "Argument \"rate\" must be at least 1.")
-                ])
+    @check_types(("rate", lambda x: x > 0, "Argument \"rate\" must be at least 1."))
     def __init__(self, rate: int):
         """
         Initializes an `Upsampling1D` layer using given parameters.

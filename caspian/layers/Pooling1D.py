@@ -48,13 +48,11 @@ class Pooling1D(Layer):
     >>> print(out_arr.shape)
     (5, 3)
     """
-    @check_types([
-                  ("kernel_size", lambda x: x > 0, "Argument \"kernel_size\" must be greater than 0."),
-                  ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than 0."),
-                  ("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to 0."),
-                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2.")
-                  ])
+    @check_types(("kernel_size", lambda x: x > 0, "Argument \"kernel_size\" must be greater than 0."),
+                 ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than 0."),
+                 ("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to 0."),
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2."))
     def __init__(self, pool_funct: PoolFunc, kernel_size: int, 
                  input_size: tuple[int, int], 
                  strides: int = 1, padding: int = 0) -> None:
