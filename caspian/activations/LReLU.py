@@ -23,4 +23,4 @@ class LReLU(Activation):
         return np.where(data >= 0, data, data * self.alpha)
     
     def backward(self, data: np.ndarray) -> np.ndarray:
-        return np.where(data >= 0, 1, self.alpha)
+        return np.where(data > 0, 1, self.alpha)

@@ -5,4 +5,4 @@ from . import optimizers as optimizers
 from . import pooling as pooling
 from . import schedulers as schedulers
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"

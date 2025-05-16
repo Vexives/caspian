@@ -132,6 +132,7 @@ class Conv3D(Layer):
         self.pad_front, self.pad_back = ((self.pad_depth+1)//2, self.pad_depth//2)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
+        self.padding_all = padding
 
         #Other settings
         self.funct = funct
@@ -376,10 +377,10 @@ class Conv3D(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Conv2D\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
+        write_ret_str = f"Conv3D\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
                         f"\u00A0{self.kernel_depth}\u00A0{self.kernel_height}\u00A0{self.kernel_width}" + \
                         f"\u00A0{self.stride_d}\u00A0{self.stride_h}\u00A0{self.stride_w}" + \
-                        f"\u00A0{self.pad_depth}\u0A00{self.pad_height}\u00A0{self.pad_width}" + \
+                        f"\u00A0{self.pad_depth}\u00A0{self.pad_height}\u00A0{self.pad_width}" + \
                         f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
@@ -434,10 +435,10 @@ class Conv3D(Layer):
 
             new_neuron = Conv3D(act,
                                 int(prop_info[2]),                                                 #Layers
-                                tuple(int(prop_info[3]), int(prop_info[4]), int(prop_info[5])),    #Kernel size
+                                (int(prop_info[3]), int(prop_info[4]), int(prop_info[5])),    #Kernel size
                                 tuple(map(int, input_info)),                                       #Input size
-                                tuple(int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    #Strides
-                                tuple(int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  #Padding
+                                (int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    #Strides
+                                (int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  #Padding
                                 bool(prop_info[12]),                                               #Use-bias
                                 opt)
             new_neuron.bias_weights = biases
@@ -454,8 +455,7 @@ class Conv3D(Layer):
     
 
     @staticmethod
-    @check_types([
-                  ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+    @check_types(("strides", all_positive, "Argument \"strides\" must be greater than 0."),
                   ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
                   ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
 
@@ -466,8 +466,7 @@ class Conv3D(Layer):
                   ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
                   ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."),
 
-                  ("kernel", lambda x: len(x.shape) == 5, "Argument \"kernel\" must have dimension shape of 5.")
-                ])
+                  ("kernel", lambda x: len(x.shape) == 5, "Argument \"kernel\" must have dimension shape of 5."))
     def from_kernel(funct: Activation, input_size: tuple[int, int, int, int], 
                     kernel: np.ndarray, strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 
                     bias: np.ndarray = None, optimizer: Optimizer = StandardGD()) -> 'Conv3D':

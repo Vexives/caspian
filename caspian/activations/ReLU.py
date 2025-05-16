@@ -16,4 +16,4 @@ class ReLU(Activation):
         return np.maximum(0, data)
 
     def backward(self, data: np.ndarray) -> np.ndarray:
-        return (data >= 0) * 1
+        return (data > 0) * 1

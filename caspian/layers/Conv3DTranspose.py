@@ -1,11 +1,11 @@
 from ..cudalib import np
-from . import Conv3D
+from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
 from ..utilities import dilate_array, all_ints, all_positive, confirm_shape, check_types, \
                         InvalidDataException, UnsafeMemoryAccessException
 
-class Conv3DTranspose(Conv3D):
+class Conv3DTranspose(Layer):
     """
     A 3D transposed convolutional layer which performs a upward convolution transform on the 
     data provided. Outputs will generally have a larger size on the last dimension than the input.
@@ -81,28 +81,26 @@ class Conv3DTranspose(Conv3D):
     >>> print(out_arr.shape)
     (1, 3, 11, 10, 9)
     """
-    @check_types([
-                  ("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
+    @check_types(("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
 
-                  ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
-                  ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
-                  ("kernel_size", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"kernel_size\" must have a length of 3."),
+                 ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
+                 ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
+                 ("kernel_size", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"kernel_size\" must have a length of 3."),
 
-                  ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
-                  ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
-                  ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
+                 ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                 ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                 ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
 
-                  ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
-                  ("padding", all_ints, "Argument \"padding\" must contain all integers."),
-                  ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
+                 ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                 ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                 ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
 
-                  ("out_padding", lambda x: all_positive(x, True), "Argument \"out_padding\" must be greater than or equal to 0."),
-                  ("out_padding", all_ints, "Argument \"out_padding\" must contain all integers."),
-                  ("out_padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"out_padding\" must have a length of 3."),
+                 ("out_padding", lambda x: all_positive(x, True), "Argument \"out_padding\" must be greater than or equal to 0."),
+                 ("out_padding", all_ints, "Argument \"out_padding\" must contain all integers."),
+                 ("out_padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"out_padding\" must have a length of 3."),
 
-                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4.")
-                ])
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."))
     def __init__(self, funct: Activation, layers: int, kernel_size: tuple[int, int, int] | int, 
                  input_size: tuple[int, int, int, int], 
                  strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 
@@ -148,51 +146,33 @@ class Conv3DTranspose(Conv3D):
             Also applies to the expected input shape, which must be a tuple of integers.
         """          
         #Padding Initialization
-        if not all_ints(padding):
-            raise InvalidDataException("Padding must be all integers.")
-        if not all_positive(padding, True):
-            raise InvalidDataException("Padding must be greater than or equal to zero.")
+        self.padding_all = padding
         self.pad_depth, self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding, padding)
         self.pad_front, self.pad_back = ((self.pad_depth+1)//2, self.pad_depth//2)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
 
-        if not all_ints(out_padding):
-            raise InvalidDataException("Output padding must be all integers.")
-        if not all_positive(out_padding, True):
-            raise InvalidDataException("Output padding must be greater than or equal to zero.")
+        self.out_padding_all = out_padding
         self.out_pad_depth, self.out_pad_height, self.out_pad_width = out_padding if isinstance(out_padding, tuple) else (out_padding, out_padding, out_padding)
         self.out_pad_front, self.out_pad_back = ((self.out_pad_depth+1)//2, self.out_pad_depth//2)
         self.out_pad_top, self.out_pad_bottom = ((self.out_pad_height+1)//2, self.out_pad_height//2)
         self.out_pad_left, self.out_pad_right = ((self.out_pad_width+1)//2, self.out_pad_width//2)
 
         #Other settings
-        if not isinstance(funct, Activation):
-            raise InvalidDataException("Function must be a descendant of Caspian \'Activation\' class.")
         self.funct = funct
         self.opt = optimizer
-
-        if not all_ints(strides):
-            raise InvalidDataException("Strides must be all integers.")
-        if not all_ints(kernel_size):
-            raise InvalidDataException("Kernel size must be all integers.")
-        if not all_positive(strides): 
-            raise InvalidDataException("Strides must be greater than or equal to one.")
-        if not all_positive(kernel_size): 
-            raise InvalidDataException("Kernel size must be greater than or equal to one.")
         self.stride_d, self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides, strides)
         self.kernel_depth, self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size, kernel_size)
         self.use_bias = biases 
 
         #In/Out sizes
-        if not all_ints(input_size):
-            raise InvalidDataException("Input size must be all integers.")
-        self.in_size = input_size
-        self.out_size = (layers,
-                         max(((self.in_size[1] - 1) * self.stride_d) + self.out_pad_depth + self.kernel_depth - self.pad_depth, 0),
-                         max(((self.in_size[2] - 1) * self.stride_h) + self.out_pad_height + self.kernel_height - self.pad_height, 0), 
-                         max(((self.in_size[3] - 1) * self.stride_w) + self.out_pad_width + self.kernel_width - self.pad_width, 0))
-        
+        in_size = input_size
+        out_size = (layers,
+                    max(((in_size[1] - 1) * self.stride_d) + self.out_pad_depth + self.kernel_depth - self.pad_depth, 0),
+                    max(((in_size[2] - 1) * self.stride_h) + self.out_pad_height + self.kernel_height - self.pad_height, 0), 
+                    max(((in_size[3] - 1) * self.stride_w) + self.out_pad_width + self.kernel_width - self.pad_width, 0))
+        super().__init__(in_size, out_size)
+
         #Strides and Window Shapes
         self.__window_shape = (layers, 
                              self.in_size[0],
@@ -451,12 +431,12 @@ class Conv3DTranspose(Conv3D):
             If no file is specified, a string containing all information about this model is returned.
         """
         write_ret_str = f"Conv3DTranspose\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
-                        f"\u00A0{self.kernel_width}\u00A0{self.kernel_height}\u00A0{self.kernel_width}" + \
+                        f"\u00A0{self.kernel_depth}\u00A0{self.kernel_height}\u00A0{self.kernel_width}" + \
                         f"\u00A0{self.stride_d}\u00A0{self.stride_h}\u00A0{self.stride_w}" + \
                         f"\u00A0{self.pad_depth}\u00A0{self.pad_height}\u00A0{self.pad_width}" + \
                         f"\u00A0{self.out_pad_depth}\u00A0{self.out_pad_height}\u00A0{self.out_pad_width}" + \
                         f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
-                        "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
+                        "BIAS " + " ".join(list(map(str, self.bias_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.kernel_weights.flatten().tolist()))) + "\n"
@@ -509,11 +489,11 @@ class Conv3DTranspose(Conv3D):
 
             new_neuron = Conv3DTranspose(act,
                                          int(prop_info[2]),                                                 # Layers
-                                         tuple(int(prop_info[3]), int(prop_info[4]), int(prop_info[5])),    # Kernel sizes                        
+                                         (int(prop_info[3]), int(prop_info[4]), int(prop_info[5])),    # Kernel sizes                        
                                          tuple(map(int, input_info)),                                       # Input size
-                                         tuple(int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    # Strides
-                                         tuple(int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  # Padding
-                                         tuple(int(prop_info[12]), int(prop_info[13]), int(prop_info[14])), # Out-padding
+                                         (int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    # Strides
+                                         (int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  # Padding
+                                         (int(prop_info[12]), int(prop_info[13]), int(prop_info[14])), # Out-padding
                                          bool(prop_info[15]),                                               # Use-bias
                                          opt)
             new_neuron.bias_weights = biases
@@ -549,7 +529,7 @@ class Conv3DTranspose(Conv3D):
     def from_kernel(funct: Activation, input_size: tuple[int, int, int, int], 
                     kernel: np.ndarray,strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 
                     out_padding: tuple[int, int, int] | int = 0, bias: np.ndarray = None, 
-                    optimizer: Optimizer = StandardGD()) -> 'Conv3D':
+                    optimizer: Optimizer = StandardGD()) -> 'Conv3DTranspose':
         """
         Creates a `Conv3DTranspose` layer from a pre-constructed set of weights and biases.
         

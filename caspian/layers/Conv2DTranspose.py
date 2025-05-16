@@ -1,11 +1,11 @@
 from ..cudalib import np
-from . import Conv2D
+from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
 from ..utilities import dilate_array, all_ints, all_positive, confirm_shape, check_types, \
                         InvalidDataException, UnsafeMemoryAccessException
 
-class Conv2DTranspose(Conv2D):
+class Conv2DTranspose(Layer):
     """
     A 2D transposed convolutional layer which performs a upward convolution transform on the 
     data provided. Outputs will generally have a larger size on the last dimension than the input.
@@ -75,8 +75,7 @@ class Conv2DTranspose(Conv2D):
     >>> print(out_arr.shape)
     (1, 3, 11, 10)
     """
-    @check_types([
-                  ("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
+    @check_types(("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
 
                   ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
                   ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
@@ -95,8 +94,7 @@ class Conv2DTranspose(Conv2D):
                   ("out_padding", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"out_padding\" must have a length of 2."),
 
                   ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                  ("input_size", lambda x: len(x) == 3, "Argument \"input_size\" must have a length of 3.")
-                ])
+                  ("input_size", lambda x: len(x) == 3, "Argument \"input_size\" must have a length of 3."))
     def __init__(self, funct: Activation, layers: int, kernel_size: tuple[int, int] | int, 
                  input_size: tuple[int, int, int], 
                  strides: tuple[int, int] | int = 1, padding: tuple[int, int] | int = 0, 
@@ -143,10 +141,12 @@ class Conv2DTranspose(Conv2D):
             Also applies to the expected input shape, which must be a tuple of integers.
         """        
         #Padding Initialization
+        self.padding_all = padding
         self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
 
+        self.out_padding_all = out_padding
         self.out_pad_height, self.out_pad_width = out_padding if isinstance(out_padding, tuple) else (out_padding, out_padding)
         self.out_pad_top, self.out_pad_bottom = ((self.out_pad_height+1)//2, self.out_pad_height//2)
         self.out_pad_left, self.out_pad_right = ((self.out_pad_width+1)//2, self.out_pad_width//2)
@@ -159,10 +159,11 @@ class Conv2DTranspose(Conv2D):
         self.use_bias = biases
 
         #In/Out sizes
-        self.in_size = input_size
-        self.out_size = (layers,
-                         max(((self.in_size[1] - 1) * self.stride_h) + self.out_pad_height + self.kernel_height - self.pad_height, 0), 
-                         max(((self.in_size[2] - 1) * self.stride_w) + self.out_pad_width + self.kernel_width - self.pad_width, 0))
+        in_size = input_size
+        out_size = (layers,
+                    max(((in_size[1] - 1) * self.stride_h) + self.out_pad_height + self.kernel_height - self.pad_height, 0), 
+                    max(((in_size[2] - 1) * self.stride_w) + self.out_pad_width + self.kernel_width - self.pad_width, 0))
+        super().__init__(in_size, out_size)
         
         #Strides and Window Shapes
         self.__window_shape = (layers, 
@@ -183,8 +184,8 @@ class Conv2DTranspose(Conv2D):
 
         self.kernel_weights = np.random.uniform(-0.5, 0.5, (layers, self.in_size[0], self.kernel_height, self.kernel_width))
         self.bias_weights = np.zeros((self.out_size[0], 
-                                      self.out_size[1] - out_padding, 
-                                      self.out_size[2] - out_padding)) if biases is True else None
+                                      self.out_size[1] - self.out_pad_height, 
+                                      self.out_size[2] - self.out_pad_width)) if biases is True else None
     
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
@@ -402,7 +403,7 @@ class Conv2DTranspose(Conv2D):
                         f"\u00A0{self.pad_height}\u00A0{self.pad_width}" + \
                         f"\u00A0{self.out_pad_height}\u00A0{self.out_pad_width}" + \
                         f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
-                        "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
+                        "BIAS " + " ".join(list(map(str, self.bias_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.kernel_weights.flatten().tolist()))) + "\n"
@@ -455,11 +456,11 @@ class Conv2DTranspose(Conv2D):
 
             new_neuron = Conv2DTranspose(act,
                                          int(prop_info[2]),                             # Layers
-                                         tuple(int(prop_info[3]), int(prop_info[4])),   # Kernel sizes                        
+                                         (int(prop_info[3]), int(prop_info[4])),   # Kernel sizes                        
                                          tuple(map(int, input_info)),                   # Input size
-                                         tuple(int(prop_info[5]), int(prop_info[6])),   # Strides
-                                         tuple(int(prop_info[7]), int(prop_info[8])),   # Padding
-                                         tuple(int(prop_info[9]), int(prop_info[10])),  # Out-padding
+                                         (int(prop_info[5]), int(prop_info[6])),   # Strides
+                                         (int(prop_info[7]), int(prop_info[8])),   # Padding
+                                         (int(prop_info[9]), int(prop_info[10])),  # Out-padding
                                          bool(prop_info[11]),                           # Use-bias
                                          opt)
             new_neuron.bias_weights = biases
@@ -494,8 +495,8 @@ class Conv2DTranspose(Conv2D):
                  ("kernel", lambda x: len(x.shape) == 4, "Argument \"kernel\" must have dimension shape of 4."))
     def from_kernel(funct: Activation, input_size: tuple[int, int, int], 
                     kernel: np.ndarray, strides: tuple[int, int] | int = 1, padding: tuple[int, int] | int = 0,
-                    bias: np.ndarray = None, out_padding: tuple[int, int] | int = 0, 
-                    optimizer: Optimizer = StandardGD()) -> 'Conv2D':
+                    out_padding: tuple[int, int] | int = 0, bias: np.ndarray = None, 
+                    optimizer: Optimizer = StandardGD()) -> 'Conv2DTranspose':
         """
         Creates a `Conv2DTranspose` layer from a pre-constructed set of weights and biases.
         
@@ -549,10 +550,10 @@ class Conv2DTranspose(Conv2D):
         if input_size[0] != kernel.shape[1]: 
             raise InvalidDataException("Kernel channel dimension must be equal to the input channels.")
 
-        conv_layer = Conv2D(funct, kernel.shape[0], tuple(kernel.shape[-2:]), 
-                                  input_size, strides, padding,
-                                  out_padding,
-                                  True if bias is not None else False, optimizer)
+        conv_layer = Conv2DTranspose(funct, kernel.shape[0], tuple(kernel.shape[-2:]), 
+                                     input_size, strides, padding,
+                                     out_padding,
+                                     True if bias is not None else False, optimizer)
         
         if bias is not None and bias.shape != conv_layer.out_size:
             raise InvalidDataException("Bias weights must have the same shape as the expected output shape.")

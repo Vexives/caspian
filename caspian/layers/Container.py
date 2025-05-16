@@ -46,7 +46,7 @@ class Container(Layer):
         self.funct = funct
     
 
-    def forward(self, data: np.ndarray, *_) -> np.ndarray:
+    def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         """
         Performs a forward propagation pass through this layer given the current weights and biases.
         
@@ -63,6 +63,8 @@ class Container(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
+        if training:
+            self.__last_in = data
         return self.funct(data)
 
 
@@ -83,7 +85,11 @@ class Container(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        return self.funct.backward(cost_err)
+        return cost_err * self.funct.backward(self.__last_in)
+    
+
+    def clear_grad(self):
+        self.__last_in = None
 
 
     def deepcopy(self) -> 'Container':

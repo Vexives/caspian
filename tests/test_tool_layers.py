@@ -11,8 +11,18 @@ def test_container():
 
     t_func = ReLU()
     data_in = np.random.uniform(-1.0, 1.0, (5, 5))
-    assert np.allclose(layer(data_in), t_func(data_in))
-    assert np.allclose(layer.backward(data_in), t_func.backward(data_in))
+    out_err = np.random.uniform(1.0, 2.0, (5, 5))
+    assert np.allclose(layer(data_in, True), t_func(data_in))
+    assert np.allclose(layer.backward(out_err), 
+                       out_err * t_func.backward(data_in))
+
+
+    # No training mode test
+    layer = Container(ReLU())
+    data_in = np.random.uniform(-1.0, 1.0, (5, 5))
+    _ = layer(data_in)
+    with pytest.raises(AttributeError):
+        _ = layer.backward(data_in)
 
     
     # Incorrect function pass

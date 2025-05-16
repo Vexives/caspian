@@ -1,11 +1,11 @@
 from ..cudalib import np
-from . import Conv1D
+from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
-from ..utilities import dilate_array, all_ints, all_positive, confirm_shape, check_types, \
+from ..utilities import dilate_array, all_positive, confirm_shape, check_types, \
                         InvalidDataException, UnsafeMemoryAccessException
 
-class Conv1DTranspose(Conv1D):
+class Conv1DTranspose(Layer):
     """
     A 1D transposed convolutional layer which performs a upward convolution transform on the 
     data provided. Outputs will generally have a larger size on the last dimension than the input.
@@ -118,44 +118,23 @@ class Conv1DTranspose(Conv1D):
             Also applies to the expected input shape, which must be a tuple of integers.
         """
         #Padding Initialization
-        if not all_ints(padding):
-            raise InvalidDataException("Padding must be all integers.")
-        if not all_positive(padding, True):
-            raise InvalidDataException("Padding must be greater than or equal to zero.")
         self.padding_all = padding
         self.pad_left, self.pad_right = ((padding+1)//2, padding//2)
 
-        if not all_ints(out_padding):
-            raise InvalidDataException("Output padding must be all integers.")
-        if not all_positive(out_padding, True):
-            raise InvalidDataException("Output padding must be greater than or equal to zero.")
         self.out_padding_all = out_padding
         self.out_pad_left, self.out_pad_right = ((out_padding+1)//2, out_padding//2)
 
         #Other params
-        if not isinstance(funct, Activation):
-            raise InvalidDataException("Function must be a descendant of Caspian \'Activation\' class.")
         self.funct = funct
         self.opt = optimizer
-
-        if not all_ints(strides):
-            raise InvalidDataException("Strides must be all integers.")
-        if not all_ints(kernel_size):
-            raise InvalidDataException("Kernel size must be all integers.")
-        if not all_positive(strides): 
-            raise InvalidDataException("Strides must be greater than or equal to one.")
-        if not all_positive(kernel_size): 
-            raise InvalidDataException("Kernel size must be greater than or equal to one.")
         self.strides = strides        
         self.kernel_size = kernel_size
         self.use_bias = biases
 
         #In/Out Sizes
-        if not all_ints(input_size):
-            raise InvalidDataException("Input size must be all integers.")
         in_size = input_size
         out_size = (layers, 
-                         max(((self.in_size[1] - 1) * strides) + out_padding + kernel_size - padding, 0))
+                    max(((in_size[1] - 1) * strides) + out_padding + kernel_size - padding, 0))
         super().__init__(in_size, out_size)
 
         #Window Shapes
@@ -365,7 +344,7 @@ class Conv1DTranspose(Conv1D):
         write_ret_str = f"Conv1DTranspose\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
                         f"\u00A0{self.kernel_size}\u00A0{self.strides}\u00A0{self.padding_all}\u00A0{self.out_padding_all}" + \
                         f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
-                        "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
+                        "BIAS " + " ".join(list(map(str, self.bias_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.kernel_weights.flatten().tolist()))) + "\n"
@@ -447,7 +426,7 @@ class Conv1DTranspose(Conv1D):
                  ("kernel", lambda x: len(x.shape) == 3, "Argument \"kernel\" must have dimension shape of 3."))
     def from_kernel(funct: Activation, input_size: tuple[int, int], 
                     kernel: np.ndarray, strides: int = 1, padding: int = 0, out_padding: int = 0, 
-                    bias: np.ndarray = None, optimizer: Optimizer = StandardGD()) -> 'Conv1D':
+                    bias: np.ndarray = None, optimizer: Optimizer = StandardGD()) -> 'Conv1DTranspose':
         """
         Creates a `Conv1DTranspose` layer from a pre-constructed set of weights and biases.
         
@@ -498,8 +477,6 @@ class Conv1DTranspose(Conv1D):
             If the input channel or batch sizes are not equal between the kernel and the inputs, or if the
             kernel is not the correct shape length.
         """
-        if len(kernel.shape) != 3:
-            raise InvalidDataException(f"Kernel shape must be of length 3 instead of length {len(kernel.shape)}.")
         if input_size[0] != kernel.shape[1]: 
             raise InvalidDataException("Kernel channel dimension must be equal to the input channels.")
 
@@ -507,8 +484,6 @@ class Conv1DTranspose(Conv1D):
                                      input_size, strides, padding, out_padding, 
                                      True if bias is not None else False, optimizer)
         
-        if bias is not None and not isinstance(bias, np.ndarray):
-            raise InvalidDataException("Bias weights must be of type ndarray.")
         if bias is not None and bias.shape != conv_layer.out_size:
             raise InvalidDataException("Bias weights must have the same shape as the expected output shape.")
         conv_layer.kernel_weights = kernel
