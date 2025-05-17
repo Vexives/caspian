@@ -1,7 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import check_types
+from ..utilities import check_types, InvalidDataException
 
 class BatchNorm(Layer):
     """
@@ -54,7 +54,7 @@ class BatchNorm(Layer):
     """
     @check_types(("channels", lambda x: x > 0, "Argument \"channels\" must be greater than 0."),
                  ("dimensions", lambda x: x > 0, "Argument \"dimensions\" must be greater than 0."),
-                 ("momentum", lambda x: 0.0 < x < 1.0, "Argument \"momentum\" must be between 0.0 and 1.0."),
+                 ("momentum", lambda x: x is None or 0.0 < x < 1.0, "Argument \"momentum\" must be between 0.0 and 1.0."),
                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be greater than 0.0."))
     def __init__(self, channels: int, dimensions: int, 
                  scale: bool = True, shift: bool = True, 
@@ -75,7 +75,7 @@ class BatchNorm(Layer):
             variables to not be used.
         axis : int, default: 1
             The axis of channels of the expected input arrays. Standard expected channel axis from other layers
-            is 1, with axis 0 representing the 
+            is 1, with axis 0 representing the batches.
         scale : bool, default: True
             A boolean which determines whether the learnable gamma parameter array is initialized.
         shift : bool, default: True
@@ -86,6 +86,8 @@ class BatchNorm(Layer):
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.        
         """
+        if axis > dimensions:
+            raise InvalidDataException("Argument \"axis\" should not be greater than number of dimensions.")
         super().__init__(None, None)
         self.channels = channels
         self.dims = dimensions

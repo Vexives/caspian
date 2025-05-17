@@ -200,7 +200,7 @@ class LayerNorm(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"LayerNorm\u00A0{self.in_size}\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
+        write_ret_str = f"LayerNorm\u00A0" + " ".join(list(map(str, self.in_size))) + f"\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
         write_ret_str += f"\nWEIGHTS\u00A0" + " ".join(list(map(str, self.layer_weight.flatten().tolist()))) \
                          if self.layer_weight is not None else "\nWEIGHTS\u00A0None"
         write_ret_str += f"\nBIASES\u00A0" + " ".join(list(map(str, self.bias_weight.flatten().tolist()))) \
@@ -246,7 +246,7 @@ class LayerNorm(Layer):
             eps = float(params[2])
             opt = parse_opt_info(params[-1])
 
-            weight_data, bias_data = data_arr[2].split("\u00A0"), data_arr[3].split("\u00A0")
+            weight_data, bias_data = data_arr[1].split("\u00A0"), data_arr[2].split("\u00A0")
             weights = None if weight_data[1] == "None" else np.array(list(map(float, weight_data[1].split())))
             biases = None if bias_data[1] == "None" else np.array(list(map(float, bias_data[1].split())))
 
