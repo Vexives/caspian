@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD
+from ..utilities import check_types, InvalidDataException, BackwardSequenceException
 
 class Sequence(Layer):
     """
@@ -46,6 +47,7 @@ class Sequence(Layer):
     >>> print(out_arr.shape)
     (20,)
     """
+    @check_types(("layers", lambda x: len(x) > 0, "Argument \"layers\" must have a length of at least 1."))
     def __init__(self, layers: list[Layer] | Layer, optimizer: Optimizer = StandardGD()):
         """
         Initializes a `Sequence` layer using given parameters.
@@ -60,31 +62,34 @@ class Sequence(Layer):
 
         Raises
         ------
-        AssertionError
-            If either the length of the `layers` list is 0 or if any of the layers contained inside of
-            the list are disjointed and cannot be seamlessly processed sequentially.
+        InvalidDataException
+            If either the length of the `layers` list is 0, if any of the layers contained inside of
+            the list are disjointed and cannot be seamlessly processed sequentially, or if the list
+            contains objects that are not descendants of the Caspian `Layer` class.
         """
-        # Ensure that there is at least one layer in the system at all times.
-        if isinstance(layers, list):
-            assert len(layers) >= 1, "List of layers must have at least one initial layer."
-
         # Ensure that all layers can feed into each other seamlessly.
         self.layers = layers if isinstance(layers, list) else [layers]
         for first, second in zip(self.layers[:-1], self.layers[1:]):
-            assert self.__verify_shapes(first, second), \
-            f"Layer input and output shapes must not be disjoint. {first.out_size} - {second.in_size}"
+            if not isinstance(first, Layer) or not isinstance(second, Layer):
+                raise InvalidDataException(
+                    f"All values inside of list must be a descendant class of Layer. - {first}, {second}"
+                )
+            if not self.__verify_shapes(first, second):
+                raise InvalidDataException(
+                    f"Layer input and output shapes must not be disjoint. {first.out_size} - {second.in_size}"
+                )
 
         in_size = self.layers[0].in_size
         out_size = None
         for layer in reversed(self.layers):
             if layer.out_size is not None:
-                self.out_size = layer.out_size
+                out_size = layer.out_size
                 break
         super().__init__(in_size, out_size)
 
         self.num_layers = len(self.layers)
         self.opt = optimizer
-        self.trainable = False
+        self.__trainable = False
 
 
     def __add__(self, new_layer: Layer) -> 'Sequence':
@@ -99,12 +104,15 @@ class Sequence(Layer):
 
         Raises
         ------
-        AssertionError
+        InvalidDataException
             If the new layer provided does not take the same general input shape as the current last
-            layer in this `Sequence`, then an error is raised.
+            layer in this `Sequence`, or if it is not a descendant of the Caspian `Layer` class,
+            then an error is raised.
         """
-        assert self.__verify_shapes(self.layers[-1], new_layer), \
-               "Layer input and output shapes must not be disjoint."
+        if not isinstance(new_layer, Layer):
+            raise InvalidDataException("New sequence addition must be a descendant of the Layer class.")
+        if not self.__verify_shapes(self.layers[-1], new_layer):
+            raise InvalidDataException("Layer input and output shapes must not be disjoint.")
         self.layers.append(new_layer)
         self.num_layers += 1
         self.out_size = new_layer.out_size if new_layer.out_size is not None else self.out_size
@@ -138,7 +146,7 @@ class Sequence(Layer):
         """
         for layer in self.layers:
             data = layer.forward(data, training)
-        self.trainable = True
+        self.__trainable = training
         return data
 
 
@@ -158,9 +166,17 @@ class Sequence(Layer):
         ndarray
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this `Sequence`'s input shape.
+
+        Raises
+        ------
+        BackwardSequenceException
+            If the most recent forward pass (if applicable) was not in training mode.
         """
+        if not self.__trainable:
+            raise BackwardSequenceException("Sequence has not been prepared for learning phase.")
         for layer in reversed(self.layers):
             cost_err = layer.backward(cost_err)
+        self.__trainable = False
         return cost_err
     
 
@@ -172,7 +188,9 @@ class Sequence(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.trainable = False
+        self.__trainable = False
+        for layer in self.layers:
+            layer.clear_grad()
 
 
     def set_optimizer(self, opt: Optimizer = StandardGD()) -> None:
@@ -250,7 +268,9 @@ class Sequence(Layer):
         """
         def parse_and_return(handled_str: str):
             all_layers = handled_str.split("\n\u00AD")
-            processed_layers = [getattr(__import__("layers"), layer.split("\u00A0")[0].strip()).from_save(layer) 
+            dir_imports = __import__("caspian.layers", globals(), locals(), "layers")
+            processed_layers = [getattr(dir_imports, layer.split("\u00A0")[0].strip())
+                                .from_save(layer) 
                                 for layer in all_layers[1:-1]]
             new_seq = Sequence(processed_layers)
             return new_seq

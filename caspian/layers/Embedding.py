@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
+from ..utilities import check_types
 
 class Embedding(Layer):
     """
@@ -33,6 +34,8 @@ class Embedding(Layer):
     >>> print(out_arr.shape)
     (12, 5)
     """
+    @check_types(("vocab_len", lambda x: x > 0, "Argument \"vocab_len\" must be greater than 0."),
+                 ("embed_size", lambda x: x > 0, "Argument \"embed_size\" must be greater than 0."))
     def __init__(self, vocab_len: int, embed_size: int,
                  optimizer: Optimizer = StandardGD()):
         """
@@ -95,7 +98,7 @@ class Embedding(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        ret_grad = self.embed_table.T @ cost_err
+        ret_grad = cost_err @ self.embed_table.T
         self.embed_table += self.__last_in.T @ self.opt.process_grad(cost_err)
         return ret_grad
     
@@ -184,10 +187,10 @@ class Embedding(Layer):
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
             prop_info = data_arr[0].split("\u00A0")
-            weight_info = data_arr[-2].split("\u00A0")
+            weight_info = data_arr[-2].strip().split()
 
             v_len, e_len = int(prop_info[1]), int(prop_info[2])
-            table = np.array(list(map(float, weight_info.split()))).reshape((v_len, e_len))
+            table = np.array(list(map(float, weight_info))).reshape((v_len, e_len))
             opt = parse_opt_info(prop_info[-1])
 
             new_neuron = Embedding(v_len, e_len, opt)

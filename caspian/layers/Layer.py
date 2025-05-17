@@ -1,5 +1,6 @@
 from ..cudalib import np
 from ..optimizers import Optimizer
+from ..utilities import all_ints, check_types, InvalidDataException
 
 class Layer():
     '''
@@ -8,10 +9,11 @@ class Layer():
     
     Performs no operations and takes no arguments.
     '''
-    def __init__(self, in_size: tuple[int, ...], out_size: tuple[int, ...]):
+    @check_types(("in_size", all_ints, "Incorrect input shape type - Must be all integers."),
+                 ("out_size", all_ints, "Incorrect output shape type - Must be all integers."))
+    def __init__(self, in_size: tuple[int, ...] | None, out_size: tuple[int, ...] | None):
         self.in_size = in_size
         self.out_size = out_size
-        pass
 
     def __call__(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         """Calls the class forward function and provides the given parameters."""

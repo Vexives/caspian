@@ -13,6 +13,8 @@ setup(
     url="https://github.com/Vexives/caspian",
     packages = find_packages(),
     install_requires = ["numpy"],
+    test_suite = "tests",
+    tests_require = ["pytest"],
     python_requires = ">=3.10",
     keywords = [
         "machine learning", "data science", "deep learning", "numpy"

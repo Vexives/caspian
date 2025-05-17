@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
+from ..utilities import all_positive, confirm_shape, check_types, UnsafeMemoryAccessException
 
 class Pooling1D(Layer):
     """
@@ -47,6 +48,11 @@ class Pooling1D(Layer):
     >>> print(out_arr.shape)
     (5, 3)
     """
+    @check_types(("kernel_size", lambda x: x > 0, "Argument \"kernel_size\" must be greater than 0."),
+                 ("strides", lambda x: x > 0, "Argument \"strides\" must be greater than 0."),
+                 ("padding", lambda x: x >= 0, "Argument \"padding\" must be greater than or equal to 0."),
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 2, "Argument \"input_size\" must have a length of 2."))
     def __init__(self, pool_funct: PoolFunc, kernel_size: int, 
                  input_size: tuple[int, int], 
                  strides: int = 1, padding: int = 0) -> None:
@@ -69,6 +75,13 @@ class Pooling1D(Layer):
         padding : int, default: 0
             An integer that determines how many empty data points are put on the edges of the final dimension
             as padding layers before pooling.
+
+        Raises
+        ------
+        InvalidDataException
+            If any of the data provided is not an integer or less than one (with the exception of padding, 
+            which can be 0), or the pooling function is not of type `PoolFunc`.
+            Also applies to the expected input shape, which must be a tuple of integers.
         """
         #Pooling Function
         self.funct = pool_funct
@@ -106,7 +119,14 @@ class Pooling1D(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
+        if not confirm_shape(data.shape, self.in_size, 2):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {data.shape}, {self.in_size}")
         new_data = np.expand_dims(data, axis=0) if len(data.shape) < 3 else data    #Enforce batches.
         data_padded = np.pad(new_data, ((0, 0), (0, 0), 
                                         (self.pad_left, self.pad_right)), mode="constant")
@@ -124,7 +144,6 @@ class Pooling1D(Layer):
 
         if training:
             self.__last_in = data_padded
-            self.__last_out = pool_val
 
         if len(data.shape) < 3:
             pool_val = pool_val.squeeze(axis=0)
@@ -146,7 +165,14 @@ class Pooling1D(Layer):
         ndarray
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
+        if not confirm_shape(cost_err.shape, self.out_size, 2):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
         main_strides = (self.__last_in.strides[0], 
                         self.__last_in.strides[1],
@@ -185,7 +211,6 @@ class Pooling1D(Layer):
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass and sets the variables to `None`."""
         self.__last_in = None
-        self.__last_out = None
 
 
     def set_optimizer(self, *_) -> None:

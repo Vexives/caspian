@@ -1,7 +1,7 @@
 from .Activation import Activation
 from .ReLU import ReLU
 from .Sigmoid import Sigmoid
-from .Linear import Linear
+from .Identity import Identity
 from .Tanh import Tanh
 from .Softplus import Softplus
 from .LReLU import LReLU
@@ -17,7 +17,7 @@ act_funct_dict: dict[str, Activation] = {"ReLU":ReLU,
                                          "Softplus":Softplus, 
                                          "Softmin":Softmin,
                                          "ELU":ELU,
-                                         "Linear":Linear}
+                                         "Identity":Identity}
 
 def parse_act_info(input: str) -> Activation:
     all_params = input.strip().split("/")

@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
+from ..utilities import check_types, all_positive
 
 class LayerNorm(Layer):
     """
@@ -43,6 +44,8 @@ class LayerNorm(Layer):
     [[ 0.51179302  0.31993403  0.31220338 -0.00582093 -0.03786925]
      [ 0.04312625 -0.15719677 -0.38710092 -0.18183973 -0.57738105]]
     """
+    @check_types(("input_size", all_positive, "Argument \"input_size\" must contain all values above 0."),
+                 ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be above 0.0."))
     def __init__(self, input_size: tuple[int, ...], weights: bool = True,
                  biases: bool = True, var_eps: float = 1e-8,
                  optimizer: Optimizer = StandardGD()):
@@ -64,8 +67,8 @@ class LayerNorm(Layer):
             gradient descent path.        
         """
         super().__init__(input_size, input_size)
-        self.layer_weight = None if not weights else np.random.uniform(-0.5, 0.5, (int(np.prod(input_size)),))
-        self.bias_weight = None if not biases else np.zeros((int(np.prod(input_size)),))
+        self.layer_weight = np.random.uniform(-0.5, 0.5, (int(np.prod(input_size)),)) if weights is True else None
+        self.bias_weight = np.zeros((int(np.prod(input_size)),)) if biases is True else None
 
         self.var_eps = var_eps
         self.opt = optimizer
@@ -197,7 +200,7 @@ class LayerNorm(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"LayerNorm\u00A0{self.in_size}\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
+        write_ret_str = f"LayerNorm\u00A0" + " ".join(list(map(str, self.in_size))) + f"\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
         write_ret_str += f"\nWEIGHTS\u00A0" + " ".join(list(map(str, self.layer_weight.flatten().tolist()))) \
                          if self.layer_weight is not None else "\nWEIGHTS\u00A0None"
         write_ret_str += f"\nBIASES\u00A0" + " ".join(list(map(str, self.bias_weight.flatten().tolist()))) \
@@ -243,7 +246,7 @@ class LayerNorm(Layer):
             eps = float(params[2])
             opt = parse_opt_info(params[-1])
 
-            weight_data, bias_data = data_arr[2].split("\u00A0"), data_arr[3].split("\u00A0")
+            weight_data, bias_data = data_arr[1].split("\u00A0"), data_arr[2].split("\u00A0")
             weights = None if weight_data[1] == "None" else np.array(list(map(float, weight_data[1].split())))
             biases = None if bias_data[1] == "None" else np.array(list(map(float, bias_data[1].split())))
 

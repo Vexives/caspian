@@ -1,9 +1,10 @@
 from ..cudalib import np
-from . import Dense
+from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
+from ..utilities import all_positive, all_ints, check_types, ShapeIncompatibilityException
 
-class Bilinear(Dense):
+class Bilinear(Layer):
     """
     A bilinear dense layer which performs a dual-linear transformation of the input data provided.
 
@@ -53,7 +54,11 @@ class Bilinear(Dense):
     >>> print(out_arr.shape)
     (5,)
     """
-
+    @check_types(("inputs_1", all_ints, "Incorrect first input shape type - Must be all integers."),
+                 ("inputs_1", all_positive, "First input sizes must all be greater than 0."),
+                 ("inputs_2", all_ints, "Incorrect second input shape type - Must be all integers."),
+                 ("inputs_1", all_positive, "Second input sizes must all be greater than 0."),
+                 ("outputs", lambda x: x > 0, "Output size must be greater than 0."))
     def __init__(self, funct: Activation, inputs_1: tuple[int, ...] | int,
                  inputs_2: tuple[int, ...] | int, outputs: int, 
                  optimizer: Optimizer = StandardGD()):
@@ -78,15 +83,17 @@ class Bilinear(Dense):
         first_ins = inputs_1 if isinstance(inputs_1, tuple) else (inputs_1,)
         second_ins = inputs_2 if isinstance(inputs_2, tuple) else (inputs_2,)
 
-        assert first_ins[:-1] == second_ins[:-1], \
-        f"Input shape must be equal except for last dimension: {first_ins} - {second_ins}"
+        if first_ins[:-1] != second_ins[:-1]:
+            raise ShapeIncompatibilityException(
+                f"Input shape must be equal except for last dimension: {first_ins} - {second_ins}")
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, first_ins[-1], second_ins[-1]))
         self.bias_weight = np.zeros((outputs,))
 
-        in_size = (first_ins, second_ins)
+        in_size = (*first_ins, *second_ins)
         out_size = (*first_ins[:-1], outputs)
         super().__init__(in_size, out_size)
+        self.in_size = (first_ins, second_ins)
         
         self.funct = funct
         self.opt = optimizer

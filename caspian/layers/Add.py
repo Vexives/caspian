@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import InvalidDataException
 
 class Add(Layer):
     '''
@@ -15,7 +16,7 @@ class Add(Layer):
 
     This layer can also not be saved or loaded from a file, as it does not take any parameters.
     '''
-    def __init__(self, *_):
+    def __init__(self):
         """
         Initializes an `Add` layer without parameters.
         """
@@ -41,7 +42,14 @@ class Add(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        InvalidDataException
+            If the data provided is not in tuple format or has a size of less than 2.
         """
+        if not isinstance(data, tuple) or len(data) < 2:
+            raise InvalidDataException("Must have more than one array and in tuple form.")
         return sum(data)
     
 

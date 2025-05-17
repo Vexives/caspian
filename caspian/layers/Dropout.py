@@ -1,7 +1,8 @@
 from ..cudalib import np
-from . import Reshape
+from . import Layer
+from ..utilities import check_types, ShapeIncompatibilityException
 
-class Dropout(Reshape):
+class Dropout(Layer):
     """
     A dropout layer which cancels out random points of the given data across all dimensions.
     Performs no actions unless training mode is set to be `True` during the forward pass.
@@ -11,35 +12,29 @@ class Dropout(Reshape):
         
     Attributes
     ---------
-    in_size : tuple[int, ...]
-        A tuple containing the expected input shape `(..., X)` where `...` is any 
-        intermediate dimension, and `X` is the expected length of the input.
-    out_size : tuple[int, ...]
-        A tuple containing the same shape as `in_size`.
     chance : float
         A float representing the dropout chance for each point in the data array.
 
 
     Examples
     --------
-    >>> layer1 = Dropout((1, 5))
+    >>> layer1 = Dropout(0.7)
     >>> in_arr = np.arange(5)
     >>> out_arr = layer1(in_arr, True)
     >>> print(out_arr)
     [0 1 2 0 4]
     """
-    def __init__(self, input_size: tuple[int, ...], drop_chance: float = 0.7) -> None:
+    @check_types(("drop_chance", lambda x: 0.0 < x < 1.0, "Argument \"drop_chance\" must be between 0.0 and 1.0."))
+    def __init__(self, drop_chance: float = 0.7) -> None:
         """
         Initializes a `Dropout` layer using given parameters.
 
         Parameters
         ----------
-        input_size : int | tuple[int, ...]
-            An integer or tuple of integers matching the shape of the expected input arrays.
         drop_chance : float
             A float representing the dropout chance for each point in the expected input arrays.
         """
-        super().__init__(input_size, input_size)
+        super().__init__(None, None)
         self.chance = drop_chance
         self.__drop_mask = None
     
@@ -62,9 +57,8 @@ class Dropout(Reshape):
         ndarray
             The forward propagated array with dropped values.
         """ 
-        assert data.shape == self.in_size
         if training:
-            self.__drop_mask = np.random.uniform(0.0, 1.0, self.in_size) > self.chance
+            self.__drop_mask = np.random.uniform(0.0, 1.0, data.shape) > self.chance
             mult_comp = (1.0 / 1.0 - self.chance) if self.chance != 1.0 else 1
             return data * self.__drop_mask * mult_comp
         return data
@@ -86,28 +80,19 @@ class Dropout(Reshape):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        assert self.__drop_mask is not None, "Forward training pass must be performed before backward pass."
+        if self.__drop_mask is None or self.__drop_mask.shape != cost_err.shape:
+            raise ShapeIncompatibilityException("Drop mask has not been updated for this gradient.")
         return cost_err * self.__drop_mask
-    
-
-    def step(self) -> None:
-        """Not applicable for this layer."""
-        pass
 
 
     def clear_grad(self) -> None:
         """Clears the drop mask from this layer."""
         self.__drop_mask = None
-
-
-    def set_optimizer(self, *_) -> None:
-        """Not applicable for this layer."""
-        pass
     
 
     def deepcopy(self) -> 'Dropout':
         """Creates a new deepcopy of this layer with the exact same shape and drop chance."""
-        return Dropout(self.in_size, self.chance)
+        return Dropout(self.chance)
     
 
     def save_to_file(self, filename: str = None) -> str | None:
@@ -126,7 +111,7 @@ class Dropout(Reshape):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Dropout\u00A0" + " ".join(list(map(str, self.in_size))) + "\n" + \
+        write_ret_str = f"Dropout\u00A0\n" + \
                         f"CHANCE {self.chance}" + "\n\u00A0"
         if not filename:
             return write_ret_str
@@ -162,9 +147,8 @@ class Dropout(Reshape):
         """
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
-            in_size = tuple(map(int, data_arr[0].split("\u00A0")[1]))
             chance = float(data_arr[1].split()[1])
-            return Dropout(in_size, chance)
+            return Dropout(chance)
 
         if file_load:
             full_parse_str = None

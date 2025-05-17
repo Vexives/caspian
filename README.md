@@ -8,6 +8,8 @@
 | [**Future Plans**](#future-plans-and-developments)
 |
 
+![pypi](https://img.shields.io/pypi/v/caspian-ml)
+
 A flexible deep learning/machine learning research library using [NumPy].
 
 

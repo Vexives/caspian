@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import check_types, ShapeIncompatibilityException
 
 class Reshape(Layer):
     """
@@ -25,6 +26,7 @@ class Reshape(Layer):
     >>> print(out_arr.shape)
     (50, 10)
     """
+    @check_types()
     def __init__(self, input_size: tuple[int, ...], output_size: tuple[int, ...]) -> None:
         """
         Initializes a `Reshape` layer using given parameters.
@@ -44,11 +46,12 @@ class Reshape(Layer):
             the output shape. 
         """
         try:
-            in_test_shape = tuple(filter(lambda x: x > 0, input_size))
+            in_test_shape = tuple(filter(lambda x: x != -1, input_size))
             example_arr = np.zeros(in_test_shape)
             example_arr = example_arr.reshape(output_size)
         except:
-            raise AttributeError(f"Input and output shapes not compatible. - {input_size} - {output_size}")
+            raise ShapeIncompatibilityException("Input and output shapes not compatible." + \
+                                                f"- {input_size} - {output_size}")
 
         super().__init__(input_size, output_size)
     

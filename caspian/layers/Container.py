@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..activations import Activation, parse_act_info
+from ..utilities import check_types
 
 class Container(Layer):
     '''
@@ -28,6 +29,7 @@ class Container(Layer):
     >>> print(out_arr)
     [ 0.42778123  0.          0.          0.11093225  0.        ]
     '''
+    @check_types()
     def __init__(self, funct: Activation):
         """
         Initializes a `Container` layer using given parameters.
@@ -44,7 +46,7 @@ class Container(Layer):
         self.funct = funct
     
 
-    def forward(self, data: np.ndarray, *_) -> np.ndarray:
+    def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         """
         Performs a forward propagation pass through this layer given the current weights and biases.
         
@@ -61,6 +63,8 @@ class Container(Layer):
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
         """
+        if training:
+            self.__last_in = data
         return self.funct(data)
 
 
@@ -81,27 +85,16 @@ class Container(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        return self.funct.backward(cost_err)
+        return cost_err * self.funct.backward(self.__last_in)
+    
 
-
-    def step(self) -> None:
-        """Not applicable for this layer."""
-        pass
-
-
-    def clear_grad(self) -> None:
-        """Not applicable for this layer."""
-        pass
-
-
-    def set_optimizer(self, *_) -> None:
-        """Not applicable for this layer."""
-        pass
+    def clear_grad(self):
+        self.__last_in = None
 
 
     def deepcopy(self) -> 'Container':
         """Creates a new deepcopy of this layer with the exact same parameters."""
-        return Container(self.funct, self.in_size)
+        return Container(self.funct)
 
 
     def save_to_file(self, filename: str = None) -> None | str:
@@ -121,7 +114,6 @@ class Container(Layer):
             If no file is specified, a string containing all information about this model is returned.
         """
         write_ret_str = f"Container\u00A0{repr(self.funct)}\u00A0" + \
-                        " ".join(list(map(str, self.in_size))) + \
                         "\n\u00A0"
         if not filename:
             return write_ret_str
@@ -159,8 +151,7 @@ class Container(Layer):
             prop_info = data_arr[0].split("\u00A0")
 
             new_act_funct = parse_act_info(prop_info[1])
-            in_size = tuple(map(int, prop_info[2].split()))
-            new_neuron = Container(new_act_funct, in_size)
+            new_neuron = Container(new_act_funct)
             return new_neuron
         
         if file_load:

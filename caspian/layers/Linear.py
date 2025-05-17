@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
+from ..utilities import all_positive, check_types
 
 class Linear(Layer):
     """
@@ -41,6 +42,8 @@ class Linear(Layer):
     >>> print(out_arr.shape)
     (5,)
     """
+    @check_types(("inputs", all_positive, "Argument \"inputs\" must contain all values greater than 0."),
+                 ("outputs", lambda x: x > 0, "Argument \"outputs\" must be greater than 0."))
     def __init__(self, inputs: tuple[int, ...] | int, outputs: int, biases: bool = False,
                  optimizer: Optimizer = StandardGD()) -> None:
         """
@@ -58,13 +61,18 @@ class Linear(Layer):
         optimizer : Optimizer, default: StandardGD()
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.
+
+        Raises
+        ------
+        InvalidDataException
+            If the input or output sizes contain any non-integer value, or values below 1.
         """
         in_size = inputs if isinstance(inputs, tuple) else (inputs,)
         out_size = (*in_size[:-1], outputs,)
         super().__init__(in_size, out_size)
 
         self.layer_weight = np.random.uniform(-0.5, 0.5, (outputs, in_size[-1]))
-        self.bias_weight = np.zeros((outputs, 1)) if biases else None
+        self.bias_weight = np.zeros((outputs, 1)) if biases is True else None
 
         self.opt = optimizer
 
@@ -231,7 +239,7 @@ class Linear(Layer):
             biases = np.array(list(map(float, bias_info.split()))).reshape((out_size, 1)) \
                              if bias_info != "None" else None
 
-            new_neuron = Linear(in_size, out_size, opt)
+            new_neuron = Linear(in_size, out_size, bias_info == "None", opt)
             new_neuron.layer_weight = weights
             new_neuron.bias_weight = biases
             return new_neuron

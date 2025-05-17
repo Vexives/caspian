@@ -2,7 +2,8 @@ from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
 from ..activations import Activation, parse_act_info
-from ..utilities import dilate_array
+from ..utilities import dilate_array, all_ints, all_positive, confirm_shape, check_types, \
+                        InvalidDataException, UnsafeMemoryAccessException
 
 class Conv3D(Layer):
     """
@@ -71,6 +72,22 @@ class Conv3D(Layer):
     >>> print(out_arr.shape)
     (1, 2, 7, 8, 6)
     """
+    @check_types(("layers", lambda x: x > 0, "Argument \"layers\" must be greater than zero."),
+
+                 ("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
+                 ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
+                 ("kernel_size", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"kernel_size\" must have a length of 3."),
+
+                 ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                 ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                 ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
+
+                 ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                 ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                 ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
+
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."))
     def __init__(self, funct: Activation, layers: int, kernel_size: tuple[int, int, int] | int, 
                  input_size: tuple[int, int, int, int], 
                  strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 
@@ -102,16 +119,27 @@ class Conv3D(Layer):
         opt : Optimizer, default: StandardGD()
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.
+
+        Raises
+        ------
+        InvalidDataException
+            If any of the data provided is not an integer, tuple of integers, or less than one (with the exception 
+            of padding, which can be 0), or if the given function is not of type `Activation`. 
+            Also applies to the expected input shape, which must be a tuple of integers.
         """ 
-        #Stride, Kernel, and Padding Initialization
-        self.stride_d, self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides, strides)
-
-        self.kernel_depth, self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size, kernel_size)
-
+        #Padding Initialization
         self.pad_depth, self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding, padding)
         self.pad_front, self.pad_back = ((self.pad_depth+1)//2, self.pad_depth//2)
         self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
         self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
+        self.padding_all = padding
+
+        #Other settings
+        self.funct = funct
+        self.opt = optimizer
+        self.stride_d, self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides, strides)
+        self.kernel_depth, self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size, kernel_size)
+        self.use_bias = biases
 
         #In/Out Sizes
         in_size = input_size
@@ -143,16 +171,12 @@ class Conv3D(Layer):
                          self.out_size[2] + (self.out_size[2]-1) * (self.stride_h-1),
                          self.out_size[3] + (self.out_size[3]-1) * (self.stride_w-1)) #(F, out_D + dilate, out_H + dilate, out_W + dilate)
 
-        #Other settings
-        self.funct = funct
-        self.opt = optimizer
         self.kernel_weights = np.random.uniform(-0.5, 0.5, (layers, 
                                                             self.in_size[0], 
                                                             self.kernel_depth, 
                                                             self.kernel_height, 
                                                             self.kernel_width))
-        self.bias_weights = np.zeros(self.out_size) if biases else None
-        self.use_bias = biases
+        self.bias_weights = np.zeros(self.out_size) if biases is True else None
     
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
@@ -171,7 +195,14 @@ class Conv3D(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
+        if not confirm_shape(data.shape, self.in_size, 4):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {data.shape}, {self.in_size}")
         new_data = np.expand_dims(data, axis=0) if len(data.shape) < 5 else data    #Enforce batches.
         new_data = np.pad(new_data, ((0, 0), (0, 0),
                                      (self.pad_front, self.pad_back),
@@ -222,7 +253,14 @@ class Conv3D(Layer):
         ndarray
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
+        if not confirm_shape(cost_err.shape, self.out_size, 4):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 5 else cost_err   #Enforce batches.
         new_err = new_err * self.funct(self.__last_out, True)
         opt_grad = self.opt.process_grad(new_err)
@@ -339,10 +377,10 @@ class Conv3D(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Conv2D\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
+        write_ret_str = f"Conv3D\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
                         f"\u00A0{self.kernel_depth}\u00A0{self.kernel_height}\u00A0{self.kernel_width}" + \
                         f"\u00A0{self.stride_d}\u00A0{self.stride_h}\u00A0{self.stride_w}" + \
-                        f"\u00A0{self.pad_depth}\u0A00{self.pad_height}\u00A0{self.pad_width}" + \
+                        f"\u00A0{self.pad_depth}\u00A0{self.pad_height}\u00A0{self.pad_width}" + \
                         f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
@@ -388,19 +426,19 @@ class Conv3D(Layer):
             input_info = data_arr[-2].strip().split()[1:]
 
             bias_size = tuple(map(int, data_arr[1].split()[1:]))
-            biases = np.array(list(map(int, data_arr[2].strip().split()))).reshape(bias_size)
+            biases = np.array(list(map(float, data_arr[2].strip().split()))).reshape(bias_size)
             kernel_size = tuple(map(int, data_arr[3].split()[1:]))
-            kernels = np.array(list(map(int, data_arr[4].strip().split()))).reshape(kernel_size)
+            kernels = np.array(list(map(float, data_arr[4].strip().split()))).reshape(kernel_size)
 
             act = parse_act_info(prop_info[1])                                  #Activation
             opt = parse_opt_info(prop_info[-1])                                 #Optimizer
 
             new_neuron = Conv3D(act,
                                 int(prop_info[2]),                                                 #Layers
-                                tuple(int(prop_info[3]), int(prop_info[4]), int(prop_info[5])),    #Kernel size
+                                (int(prop_info[3]), int(prop_info[4]), int(prop_info[5])),    #Kernel size
                                 tuple(map(int, input_info)),                                       #Input size
-                                tuple(int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    #Strides
-                                tuple(int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  #Padding
+                                (int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    #Strides
+                                (int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  #Padding
                                 bool(prop_info[12]),                                               #Use-bias
                                 opt)
             new_neuron.bias_weights = biases
@@ -417,6 +455,18 @@ class Conv3D(Layer):
     
 
     @staticmethod
+    @check_types(("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                  ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                  ("strides", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"strides\" must have a length of 3."),
+
+                  ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                  ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                  ("padding", lambda x: isinstance(x, int) or len(x) == 3, "Argument \"padding\" must have a length of 3."),
+
+                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                  ("input_size", lambda x: len(x) == 4, "Argument \"input_size\" must have a length of 4."),
+
+                  ("kernel", lambda x: len(x.shape) == 5, "Argument \"kernel\" must have dimension shape of 5."))
     def from_kernel(funct: Activation, input_size: tuple[int, int, int, int], 
                     kernel: np.ndarray, strides: tuple[int, int, int] | int = 1, padding: tuple[int, int, int] | int = 0, 
                     bias: np.ndarray = None, optimizer: Optimizer = StandardGD()) -> 'Conv3D':
@@ -430,7 +480,7 @@ class Conv3D(Layer):
         `(F, C, kD, kH, kW)`, where `F` is the number of output filters/channels,
         `C` is the number of input channels, and `kD`, `kH`, `kW` are the kernel sizes.
 
-        If the sizes do not match the input, an AssertionError is raised.
+        If the sizes do not match the input, an InvalidDataException is raised.
 
 
         Parameters
@@ -456,25 +506,26 @@ class Conv3D(Layer):
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.
 
-
-        Raises
-        ------
-        AssertionError
-            If the input channel and batch sizes are not equal between the kernel and the inputs, or if the
-            kernel is not the correct shape length.
-
-
         Returns
         -------
         Conv3D
             A new `Conv3D` layer containing all of the information given and interpreted from the input kernel.
+        
+        Raises
+        ------
+        InvalidDataException
+            If the input channel or batch sizes are not equal between the kernel and the inputs, or if the
+            kernel is not the correct shape length.
         """
-        assert len(kernel.shape) == 5, f"Kernel shape must be of length 5 instead of length {len(kernel.shape)}."
-        assert input_size[0] == kernel.shape[1], "Kernel channel dimension must be equal to the input channels."
+        if input_size[0] != kernel.shape[1]: 
+            raise InvalidDataException("Kernel channel dimension must be equal to the input channels.")
 
         conv_layer = Conv3D(funct, kernel.shape[0], tuple(kernel.shape[-3:]), 
                                   input_size, strides, padding,
-                                  True if bias else False, optimizer)
+                                  True if bias is not None else False, optimizer)
+        
+        if bias is not None and bias.shape != conv_layer.out_size:
+            raise InvalidDataException("Bias weights must have the same shape as the expected output shape.")
         conv_layer.kernel_weights = kernel
         conv_layer.bias_weights = bias
         return conv_layer

@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Layer
+from ..utilities import check_types, InvalidDataException
 
 class Concat(Layer):
     '''
@@ -22,6 +23,7 @@ class Concat(Layer):
     axis : int
         The axis at which each given array will be concatenated.
     '''
+    @check_types()
     def __init__(self, axis: int = 0):
         """
         Initializes a `Concat` layer with given axis parameter.
@@ -57,9 +59,16 @@ class Concat(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        InvalidDataException
+            If the data provided is not in tuple format or has a size of less than 2.
         """
+        if not isinstance(data, tuple) or len(data) < 2:
+            raise InvalidDataException("Must have more than one array and in tuple form.")
         if training:
-            self.last_ins = data
+            self.__last_ins = data
         return np.concatenate(data, axis=self.axis)
     
 
@@ -77,7 +86,7 @@ class Concat(Layer):
         tuple[ndarray, ...]
             The given learning gradient.
         """
-        indexes = np.cumsum(list(map(lambda x: x.shape[self.axis], self.last_ins)))
+        indexes = np.cumsum(list(map(lambda x: x.shape[self.axis], self.__last_ins)))
         return tuple(np.split(cost_err, indexes, axis=self.axis))
     
 

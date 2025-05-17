@@ -1,6 +1,6 @@
 from .Layer import Layer
-from .Dense import Dense
 from .Linear import Linear
+from .Dense import Dense
 from .Reshape import Reshape
 from .BatchNorm import BatchNorm
 from .LayerNorm import LayerNorm
@@ -25,3 +25,32 @@ from .Add import Add
 from .Mult import Mult
 from .MatMul import MatMul
 from .Concat import Concat
+
+layer_dict: dict[str, Layer] = {"Layer":Layer,
+                                "Linear":Linear,
+                                "Dense":Dense,
+                                "Reshape":Reshape,
+                                "BatchNorm":BatchNorm,
+                                "LayerNorm":LayerNorm,
+                                "Conv1D":Conv1D,
+                                "Conv1DTranspose":Conv1DTranspose,
+                                "Conv2D":Conv2D,
+                                "Conv2DTranspose":Conv2DTranspose,
+                                "Conv3D":Conv3D,
+                                "Conv3DTranspose":Conv3DTranspose,
+                                "Upsampling1D":Upsampling1D,
+                                "Upsampling2D":Upsampling2D,
+                                "Upsampling3D":Upsampling3D,
+                                "Pooling1D":Pooling1D,
+                                "Pooling2D":Pooling2D,
+                                "Pooling3D":Pooling3D,
+                                "Bilinear":Bilinear,
+                                "Container":Container,
+                                "Embedding":Embedding,
+                                "Dropout":Dropout,
+                                "Sequence":Sequence,
+                                "Add":Add,
+                                "Mult":Mult,
+                                "MatMul":MatMul,
+                                "Concat":Concat
+                                }

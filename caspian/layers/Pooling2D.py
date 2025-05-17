@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
+from ..utilities import all_positive, all_ints, confirm_shape, check_types, UnsafeMemoryAccessException
 
 class Pooling2D(Layer):
     """
@@ -56,6 +57,20 @@ class Pooling2D(Layer):
     >>> print(out_arr.shape)
     (5, 3, 4)
     """
+    @check_types(("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
+                 ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
+                 ("kernel_size", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"kernel_size\" must have a length of 2."),
+
+                 ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
+                 ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
+                 ("strides", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"strides\" must have a length of 2."),
+
+                 ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
+                 ("padding", all_ints, "Argument \"padding\" must contain all integers."),
+                 ("padding", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"padding\" must have a length of 2."),
+
+                 ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
+                 ("input_size", lambda x: len(x) == 3, "Argument \"input_size\" must have a length of 3."))
     def __init__(self, pool_funct: PoolFunc, kernel_size: tuple[int, int] | int, 
                  input_size: tuple[int, int, int], 
                  strides: tuple[int, int] | int = 1, padding: tuple[int, int] | int = 0) -> None:
@@ -79,6 +94,13 @@ class Pooling2D(Layer):
         padding : tuple[int, int] | int, default: 0
             An integer that determines how many empty data points are put on the edges of the final dimensions
             as padding layers before pooling.
+
+        Raises
+        ------
+        InvalidDataException
+            If any of the data provided is not an integer or tuple of integers, or less than one 
+            (with the exception of padding, which can be 0). Expected input size must be a tuple of integers, and
+            the pooling function must be of type `PoolFunc`.
         """
         #Pooling function
         self.funct = pool_funct
@@ -119,7 +141,14 @@ class Pooling2D(Layer):
         -------
         ndarray
             The forward propagated array with the shape equal to this layer's output shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
+        if not confirm_shape(data.shape, self.in_size, 3):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {data.shape}, {self.in_size}")
         new_data = np.expand_dims(data, axis=0) if len(data.shape) < 4 else data    #Enforce batches.
         data_padded = np.pad(new_data, pad_width=((0, 0), (0, 0), 
                                                   (self.pad_top, self.pad_bottom), 
@@ -140,7 +169,6 @@ class Pooling2D(Layer):
 
         if training:
             self.__last_in = data_padded
-            self.__last_out = pool_val
 
         if len(data.shape) < 4:
             pool_val = pool_val.squeeze(axis=0)
@@ -162,7 +190,14 @@ class Pooling2D(Layer):
         ndarray
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
+
+        Raises
+        ------
+        UnsafeMemoryAccessException
+            If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
+        if not confirm_shape(cost_err.shape, self.out_size, 3):
+            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 4 else cost_err   #Enforce batches.
         main_strides = (self.__last_in.strides[0], 
                    self.__last_in.strides[1],
@@ -206,7 +241,6 @@ class Pooling2D(Layer):
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass and sets the variables to `None`."""
         self.__last_in = None
-        self.__last_out = None
 
 
     def set_optimizer(self, *_) -> None:
