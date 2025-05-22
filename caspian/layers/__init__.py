@@ -4,6 +4,7 @@ from .Dense import Dense
 from .Reshape import Reshape
 from .BatchNorm import BatchNorm
 from .LayerNorm import LayerNorm
+from .RMSNorm import RMSNorm
 from .Conv1D import Conv1D
 from .Conv1DTranspose import Conv1DTranspose
 from .Upsampling1D import Upsampling1D
@@ -32,6 +33,7 @@ layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "Reshape":Reshape,
                                 "BatchNorm":BatchNorm,
                                 "LayerNorm":LayerNorm,
+                                "RMSNorm":RMSNorm,
                                 "Conv1D":Conv1D,
                                 "Conv1DTranspose":Conv1DTranspose,
                                 "Conv2D":Conv2D,

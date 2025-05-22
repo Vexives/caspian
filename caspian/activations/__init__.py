@@ -6,6 +6,9 @@ from .Tanh import Tanh
 from .Softplus import Softplus
 from .LReLU import LReLU
 from .ELU import ELU
+from .Swish import Swish
+from .GLU import GLU
+from .SwiGLU import SwiGLU
 from .Softmax import Softmax
 from .Softmin import Softmin
 
@@ -16,7 +19,10 @@ act_funct_dict: dict[str, Activation] = {"ReLU":ReLU,
                                          "LReLU":LReLU, 
                                          "Softplus":Softplus, 
                                          "Softmin":Softmin,
+                                         "Swish":Swish,
                                          "ELU":ELU,
+                                         "GLU":GLU,
+                                         "SwiGLU":SwiGLU,
                                          "Identity":Identity}
 
 def parse_act_info(input: str) -> Activation:

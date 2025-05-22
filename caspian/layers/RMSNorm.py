@@ -1,11 +1,11 @@
 from ..cudalib import np
-from . import Layer
+from . import LayerNorm
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import check_types, all_positive
 
-class LayerNorm(Layer):
+class RMSNorm(LayerNorm):
     """
-    A layer-based normalization layer which normalizes the given data across all provided dimensions.
+    A layer-based normalization layer which normalizes the given data across all provided dimensions
+    using the Root Mean Squared method.
 
     Supports any given shape and dimensionality as an input, as long as the shape is provided at
     initialization (batch dimension NOT included).
@@ -36,20 +36,18 @@ class LayerNorm(Layer):
 
     Examples
     --------
-    >>> layer1 = LayerNorm((2, 5))
+    >>> layer1 = RMSNorm((2, 5))
     >>> in_arr = np.arange(10).reshape((2, 5))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr)
-    [[-1.5666989  -1.21854359 -0.87038828 -0.52223297 -0.17407766]
-     [ 0.17407766  0.52223297  0.87038828  1.21854359  1.5666989 ]]
+    [[0.         0.18731716 0.37463432 0.56195149 0.74926865]
+     [0.93658581 1.12390297 1.31122014 1.4985373  1.68585446]]
     """
-    @check_types(("input_size", all_positive, "Argument \"input_size\" must contain all values above 0."),
-                 ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be above 0.0."))
     def __init__(self, input_size: tuple[int, ...], weights: bool = True,
                  biases: bool = False, var_eps: float = 1e-8,
                  optimizer: Optimizer = StandardGD()):
         """
-        Initializes a `LayerNorm` layer using given parameters.
+        Initializes a `RMSNorm` layer using given parameters.
 
         Parameters
         ----------
@@ -65,14 +63,8 @@ class LayerNorm(Layer):
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.        
         """
-        super().__init__(input_size, input_size)
-        self.norm_size = int(np.prod(input_size))
-        self.layer_weight = np.ones((self.norm_size,)) if weights is True else None
-        self.bias_weight = np.zeros((self.norm_size,)) if biases is True else None
+        super().__init__(input_size, weights, biases, var_eps, optimizer)
 
-        self.var_eps = var_eps
-        self.opt = optimizer
-    
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         """
@@ -92,25 +84,24 @@ class LayerNorm(Layer):
         -------
         ndarray
             The forward propagated array with all values in each batch normalized.
-        """        
+        """ 
         batch_data = np.expand_dims(data, axis=0) if len(data.shape) == len(self.in_size) else data
         shaped_data = batch_data.reshape((-1, self.norm_size))
 
-        # Mean and variance of batches
-        layer_mean = np.mean(shaped_data, axis=-1, keepdims=True)
-        layer_var = np.var(shaped_data, axis=-1, keepdims=True)
+        # Root mean squared process
+        avg_sqrd = np.mean(np.square(shaped_data), axis=-1, keepdims=True)
+        rms_data = np.sqrt(avg_sqrd + self.var_eps)
 
-        stdv = np.sqrt(layer_var + self.var_eps)
-        new_data = ((shaped_data - layer_mean) / stdv)
-
+        new_data = shaped_data / rms_data
         if training:
             self.__norm_res = new_data
-            self.__last_stdv = stdv
+            self.__last_rms = rms_data
+            self.__last_in = shaped_data
 
         # Full weight and bias application, if applicable
         new_data = self.layer_weight * new_data if self.layer_weight is not None else new_data
         new_data = new_data + self.bias_weight if self.bias_weight is not None else new_data
-        return new_data.reshape(data.shape)
+        return new_data.reshape(data.shape)      
     
 
     def backward(self, cost_err: np.ndarray) -> np.ndarray:
@@ -137,10 +128,10 @@ class LayerNorm(Layer):
 
         opt_err = self.opt.process_grad(shaped_err)   # Weight/Bias update gradient with optimizer
 
-        ret_grad = (shaped_err - shaped_err.mean(axis=-1, keepdims=True) 
-                    - self.__norm_res * (shaped_err * self.__norm_res).mean(axis=-1, keepdims=True)) \
-                    / self.__last_stdv
-        
+        ret_grad = shaped_err * \
+                   ((-np.square(self.__last_in) / (self.norm_size * self.__last_rms**3)) + \
+                    (1.0 / self.__last_rms))
+
         # Update weights and biases (if applicable)
         if self.layer_weight is not None:
             self.layer_weight += (opt_err * self.__norm_res).sum(axis=0)
@@ -157,7 +148,8 @@ class LayerNorm(Layer):
 
     def clear_grad(self) -> None:
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
-        self.__last_stdv = None
+        self.__last_rms = None
+        self.__last_in = None
         self.__norm_res = None
         self.opt.reset_grad()
 
@@ -175,11 +167,11 @@ class LayerNorm(Layer):
         self.opt = opt
 
 
-    def deepcopy(self) -> 'LayerNorm':
+    def deepcopy(self) -> 'RMSNorm':
         """Creates a new deepcopy of this layer with the exact same weights (if applicable) and parameters."""
-        new_neuron = LayerNorm(self.in_size,
-                               self.layer_weight is not None, self.bias_weight is not None,
-                               self.var_eps, self.opt.deepcopy())
+        new_neuron = RMSNorm(self.in_size,
+                             self.layer_weight is not None, self.bias_weight is not None,
+                             self.var_eps, self.opt.deepcopy())
         new_neuron.layer_weight = self.layer_weight.copy() if self.layer_weight is not None else None
         new_neuron.bias_weight = self.bias_weight.copy() if self.bias_weight is not None else None
         return new_neuron
@@ -201,7 +193,7 @@ class LayerNorm(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"LayerNorm\u00A0" + " ".join(list(map(str, self.in_size))) + f"\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
+        write_ret_str = f"RMSNorm\u00A0" + " ".join(list(map(str, self.in_size))) + f"\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
         write_ret_str += f"\nWEIGHTS\u00A0" + " ".join(list(map(str, self.layer_weight.flatten().tolist()))) \
                          if self.layer_weight is not None else "\nWEIGHTS\u00A0None"
         write_ret_str += f"\nBIASES\u00A0" + " ".join(list(map(str, self.bias_weight.flatten().tolist()))) \
@@ -218,7 +210,7 @@ class LayerNorm(Layer):
 
 
     @staticmethod
-    def from_save(context: str, file_load: bool = False) -> 'LayerNorm':
+    def from_save(context: str, file_load: bool = False) -> 'RMSNorm':
         """
         A static method which creates an instance of this layer class based on the information provided.
         The string provided can either be a file name/path, or the encoded string containing the layer's
@@ -237,8 +229,8 @@ class LayerNorm(Layer):
 
         Returns
         -------
-        LayerNorm
-            A new `LayerNorm` layer containing all of the information encoded in the string or file provided.
+        RMSNorm
+            A new `RMSNorm` layer containing all of the information encoded in the string or file provided.
         """
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
@@ -251,10 +243,10 @@ class LayerNorm(Layer):
             weights = None if weight_data[1] == "None" else np.array(list(map(float, weight_data[1].split())))
             biases = None if bias_data[1] == "None" else np.array(list(map(float, bias_data[1].split())))
 
-            new_neuron = LayerNorm(in_size,
-                                   False if weights is None else True,
-                                   False if biases is None else True,
-                                   eps, opt)
+            new_neuron = RMSNorm(in_size,
+                                 False if weights is None else True,
+                                 False if biases is None else True,
+                                 eps, opt)
             new_neuron.layer_weight = weights
             new_neuron.bias_weight = biases
             return new_neuron
