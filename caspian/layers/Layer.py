@@ -23,7 +23,20 @@ class Layer():
         pass
 
     def backward(self, cost_err: np.ndarray) -> np.ndarray:
-        pass
+        """
+        Returns the original error gradient.
+
+        Parameters
+        ----------
+        cost_err : ndarray
+            The learning gradient that will be returned.
+
+        Returns
+        -------
+        ndarray
+            The same learning gradient as passed into the layer.
+        """
+        return cost_err
 
     def step(self) -> None:
         pass

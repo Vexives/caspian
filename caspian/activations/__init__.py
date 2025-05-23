@@ -6,7 +6,9 @@ from .Tanh import Tanh
 from .Softplus import Softplus
 from .LReLU import LReLU
 from .ELU import ELU
+from .RReLU import RReLU
 from .Swish import Swish
+from .Softsign import Softsign
 from .GLU import GLU
 from .SwiGLU import SwiGLU
 from .Softmax import Softmax
@@ -19,8 +21,10 @@ act_funct_dict: dict[str, Activation] = {"ReLU":ReLU,
                                          "LReLU":LReLU, 
                                          "Softplus":Softplus, 
                                          "Softmin":Softmin,
+                                         "Softsign":Softsign,
                                          "Swish":Swish,
                                          "ELU":ELU,
+                                         "RReLU":RReLU,
                                          "GLU":GLU,
                                          "SwiGLU":SwiGLU,
                                          "Identity":Identity}
