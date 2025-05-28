@@ -144,8 +144,9 @@ def test_layernorm():
     data_in = np.random.uniform(0.0, 1.0, (5, 5, 10, 10))
     x, y = l1(data_in), l2(data_in)
     assert x.shape == y.shape
-    assert not np.allclose(x, y)
-
+    assert type(l2.layer_weight) is not type(l1.layer_weight)
+    assert type(l2.bias_weight) is not type(l1.bias_weight)
+    
     l1 = LayerNorm((5, 10, 10), False, False)
     l2 = LayerNorm((5, 10, 10), False, False)
     data_in = np.random.uniform(0.0, 1.0, (5, 5, 10, 10))

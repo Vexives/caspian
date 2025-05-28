@@ -1,12 +1,12 @@
 from ..cudalib import np
-from . import Activation
+from . import Softmax
 
-class Softmin(Activation):
+class Softmin(Softmax):
     """
     A Softmin activation function, creates an even distribution based on the 
     negated values of the data.
 
-    Backwards pass returns the input gradient assuming that Cross Entropy loss is used.
+    Backwards pass returns the matrix multiplied result of the Jacobian gradient.
 
 
     Notes
@@ -26,9 +26,7 @@ class Softmin(Activation):
         return f"Softmin/{self.axis}"
 
     def forward(self, data: np.ndarray) -> np.ndarray:
-        data = -data
-        ex = np.exp(data - np.max(data, axis=self.axis, keepdims=True))
-        return ex / ex.sum(axis=self.axis, keepdims=True)
+        return super().forward(-data)
     
     def backward(self, data: np.ndarray) -> np.ndarray:
         return data

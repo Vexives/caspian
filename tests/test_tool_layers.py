@@ -14,7 +14,7 @@ def test_container():
     out_err = np.random.uniform(1.0, 2.0, (5, 5))
     assert np.allclose(layer(data_in, True), t_func(data_in))
     assert np.allclose(layer.backward(out_err), 
-                       out_err * t_func.backward(data_in))
+                       t_func(data_in, out_err))
 
 
     # No training mode test

@@ -117,7 +117,7 @@ class Dense(Linear):
             same shape as this layer's input shape.
         """
         cost_err = np.expand_dims(cost_err, axis=-1)
-        new_err = cost_err * self.funct(self.__last_out, True)
+        new_err = self.funct(self.__last_out, cost_err)
         
         new_grad = self.opt(new_err)
         ret_grad = (np.transpose(self.layer_weight) @ new_err).squeeze(axis=-1)

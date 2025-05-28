@@ -153,7 +153,7 @@ class Bilinear(Layer):
             same shapes as this layer's input shapes. The first gradient corresponds to the first input,
             and the second gradient corresponds to the second input.
         """
-        new_err = cost_err * self.funct(self.__last_out, True)
+        new_err = self.funct(self.__last_out, cost_err)
         new_grad = self.opt(new_err)
         layer_grad = np.einsum("...o,...i,...j->...oij", 
                                new_grad, 

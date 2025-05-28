@@ -283,7 +283,7 @@ class Conv2DTranspose(Layer):
             raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 4 else cost_err   #Enforce batches.
 
-        new_err = new_err * self.funct(self.__last_out, True)         # Gradient for backward pass
+        new_err = self.funct(self.__last_out, new_err)              # Gradient for backward pass
         opt_grad = self.opt.process_grad(new_err)                   # Gradient for updating weights
 
         new_err = new_err[:, :, 

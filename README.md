@@ -154,7 +154,7 @@ class ReLU(Activation):
         return (data >= 0) * 1
 ```
 
-Creating a new activation function is quite simple as well, and only expects two functions, `forward()` and `backward()`, which take and return a [NumPy] array. Activations should return an array of the same size as the input for both functions, and can also have an `__init__()` if any internal variables are necessary. The abstract class `cspn.Activation` also provides default functionality for `__call__()`, which allows it to act like a standard Python function.
+Creating a new activation function is quite simple as well, and only expects two functions, `forward()` and `backward()`, which take and return a [NumPy] array. Activations should return an array of the same size as the input for both functions, and can also have an `__init__()` if any internal variables are necessary. The abstract class `cspn.Activation` also provides default functionality for `__call__()`, which allows it to act like a standard Python function. If only one value (representing the last output of the activation) is passed into the `__call__()` function, the forward pass will automatically be performed. If two values are given, then the backward pass is called, and the second array (which is the error gradient with respect to the last output) is multiplied by the backward pass result and returned. 
 
 
 ### Creation of a Pooling Function:

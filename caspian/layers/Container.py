@@ -85,7 +85,7 @@ class Container(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        return cost_err * self.funct.backward(self.__last_in)
+        return self.funct(self.__last_in, cost_err)
     
 
     def clear_grad(self):

@@ -212,7 +212,7 @@ class Conv1D(Layer):
         if not confirm_shape(cost_err.shape, self.out_size, 2):
             raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
-        new_err = new_err * self.funct(self.__last_out, True)
+        new_err = self.funct(self.__last_out, new_err)
         opt_grad = self.opt.process_grad(new_err)
         
         #Return gradient strides and window shape

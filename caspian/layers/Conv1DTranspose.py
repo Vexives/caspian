@@ -243,7 +243,7 @@ class Conv1DTranspose(Layer):
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
 
         #Optimized & standard gradient preparation
-        new_err = new_err * self.funct(self.__last_out, True)         # Gradient for backward pass
+        new_err = self.funct(self.__last_out, new_err)              # Gradient for backward pass
         opt_grad = self.opt.process_grad(new_err)                   # Gradient for updating weights
 
         new_err = new_err[:, :, self.out_pad_left:(-self.out_pad_right or None)]

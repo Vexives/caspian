@@ -7,8 +7,8 @@ class Activation():
     
     Performs no operations and takes no arguments.
     '''
-    def __call__(self, data: np.ndarray, backward: bool = False) -> np.ndarray:
-        return self.backward(data) if backward else self.forward(data)
+    def __call__(self, data: np.ndarray, err: np.ndarray = None) -> np.ndarray:
+        return err * self.backward(data) if err is not None else self.forward(data)
     
     def __repr__(self) -> str:
         return "Custom"
