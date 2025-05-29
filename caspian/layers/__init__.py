@@ -28,6 +28,7 @@ from .MatMul import MatMul
 from .Concat import Concat
 from .PositionalEncoding import PositionalEncoding
 from .Attention import Attention
+from .MultiHeadAttention import MultiHeadAttention
 
 layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "Linear":Linear,
@@ -58,5 +59,6 @@ layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "MatMul":MatMul,
                                 "Concat":Concat,
                                 "PositionalEncoding":PositionalEncoding,
-                                "Attention":Attention
+                                "Attention":Attention,
+                                "MultiHeadAttention":MultiHeadAttention
                                 }
