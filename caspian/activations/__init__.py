@@ -13,6 +13,11 @@ from .GLU import GLU
 from .SwiGLU import SwiGLU
 from .Softmax import Softmax
 from .Softmin import Softmin
+from .ReLUX import ReLUX
+from .HardShrink import HardShrink
+from .HardTanh import HardTanh
+from .HardSwish import HardSwish
+from .HardSigmoid import HardSigmoid
 
 act_funct_dict: dict[str, Activation] = {"ReLU":ReLU, 
                                          "Sigmoid":Sigmoid, 
@@ -27,6 +32,11 @@ act_funct_dict: dict[str, Activation] = {"ReLU":ReLU,
                                          "RReLU":RReLU,
                                          "GLU":GLU,
                                          "SwiGLU":SwiGLU,
+                                         "ReLUX":ReLUX,
+                                         "Hardshrink":HardShrink,
+                                         "HardTanh":HardTanh,
+                                         "HardSwish":HardSwish,
+                                         "HardSigmoid":HardSigmoid,
                                          "Identity":Identity}
 
 def parse_act_info(input: str) -> Activation:
