@@ -258,6 +258,7 @@ class Conv1D(Layer):
     def step(self) -> None:
         """Adds one step to this layer's optimizer and scheduler."""
         self.opt.step()
+        self.funct.step()
 
 
     def clear_grad(self) -> None:
@@ -265,6 +266,7 @@ class Conv1D(Layer):
         self.__last_in = None
         self.__last_out = None
         self.opt.reset_grad()
+        self.funct.reset_grad()
 
 
     def set_optimizer(self, opt: Optimizer = StandardGD()) -> None:

@@ -12,6 +12,15 @@ class Activation():
     
     def __repr__(self) -> str:
         return "Custom"
+    
+    def step(self) -> None:
+        """Used to update the optimizers of parameterized activation functions."""
+        pass
+
+    def reset_grad(self) -> None:
+        """Used to clear the gradient history the optimizers of parameterized 
+           activation functions."""
+        pass
 
     def forward(self, data: np.ndarray) -> np.ndarray:
         pass

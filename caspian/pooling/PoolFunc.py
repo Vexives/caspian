@@ -5,7 +5,10 @@ class PoolFunc():
     A basic pooling function container class which all Caspian pooling functions inherit from.
     Any custom functions should inherit from this container class.
     
-    Performs no operations and takes no arguments.
+    Attributes
+    ----------
+    axis : int
+        The axis at which the operation is performed on the data.
     '''
     def __init__(self, axis: int = -1):
         self.axis = axis

@@ -88,8 +88,13 @@ class Container(Layer):
         return self.funct(self.__last_in, cost_err)
     
 
+    def step(self):
+        self.funct.step()   
+
+
     def clear_grad(self):
         self.__last_in = None
+        self.funct.reset_grad()
 
 
     def deepcopy(self) -> 'Container':
