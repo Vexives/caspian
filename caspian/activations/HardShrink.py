@@ -17,7 +17,7 @@ class HardShrink(Activation):
         self.delta = delta
 
     def __repr__(self) -> str:
-        return f"Hardshrink/{self.delta}"
+        return f"HardShrink/{self.delta}"
 
     def forward(self, data: np.ndarray) -> np.ndarray:
         return np.where((data > -self.delta) & (data < self.delta), 0, data)

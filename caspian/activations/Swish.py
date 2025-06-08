@@ -22,8 +22,8 @@ class Swish(Activation):
 
     def forward(self, data: np.ndarray) -> np.ndarray:
         self.__last_sig = self.__sigmoid(self.beta * data)
-        self.__last_in = data
         return data * self.__last_sig
 
-    def backward(self, *_) -> np.ndarray:
-        return self.__last_sig + self.__last_in * self.__last_sig * (1 - self.__last_sig)
+    def backward(self, data: np.ndarray) -> np.ndarray:
+        beta_data = self.beta * data
+        return beta_data + self.__last_sig * (1 - beta_data)

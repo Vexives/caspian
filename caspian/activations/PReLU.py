@@ -24,11 +24,11 @@ class PReLU(Activation):
     weights : ndarray
         An array of weights that represent the constants applied to negative values on the chosen axis.
     axis : int
-        The axis at which the weights will be applied to.
+        The axis at which the weights will be applied to. Set to axis 1 for channels of data with 2 dimensions or more.
     opt : Optimizer
         The chosen optimizer for this activation's weights, used when updating values.
     """
-    def __init__(self, channels: int = 1, axis: int = 1, 
+    def __init__(self, channels: int = 1, axis: int = -1, 
                  init: float = 0.25, optimizer: Optimizer = StandardGD()):
         self.weights = np.ones((channels,)) * init
         self.__init = init
@@ -39,7 +39,7 @@ class PReLU(Activation):
         if err is not None:
             new_grad = err * self.backward(data) 
             self.weights += self.opt(new_grad).swapaxes(self.axis, -1) \
-                            .reshape(-1, self.weights.shape[0]).sum()
+                            .reshape(-1, self.weights.shape[0]).sum(axis = 0)
             return new_grad
         return self.forward(data)
 
