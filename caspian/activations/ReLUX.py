@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Activation
+from ..utilities import check_types
 
 class ReLUX(Activation):
     """
@@ -13,6 +14,7 @@ class ReLUX(Activation):
     x : float
         The value that determines the maximum value from this instance, default value is 6.0.
     """
+    @check_types()
     def __init__(self, x: float = 6.0):
         self.x = x
 

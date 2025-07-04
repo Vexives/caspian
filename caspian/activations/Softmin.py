@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Softmax
+from ..utilities import check_types
 
 class Softmin(Softmax):
     """
@@ -19,6 +20,7 @@ class Softmin(Softmax):
     axis : int
         The axis at which the softmax function is performed.
     """
+    @check_types()
     def __init__(self, axis: int = -1):
         self.axis = axis
 

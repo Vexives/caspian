@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Activation
+from ..utilities import check_types
 
 class HardShrink(Activation):
     """
@@ -13,6 +14,7 @@ class HardShrink(Activation):
         A float value representing the absolute range that will be shrunk down to zero from both
         the positive and negative values.
     """
+    @check_types()
     def __init__(self, delta: float = 0.5):
         self.delta = delta
 

@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Activation, Swish
-from ..utilities import InvalidDataException
+from ..utilities import InvalidDataException, check_types
 
 class SwiGLU(Activation):
     """
@@ -25,6 +25,7 @@ class SwiGLU(Activation):
         A given float value representing the beta value which will be applied to the
         data during the `Swish` pass.
     """
+    @check_types()
     def __init__(self, axis: int = -1, beta: float = 1.0):
         self.beta = beta
         self.axis = axis

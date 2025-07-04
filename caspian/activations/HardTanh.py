@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Activation
+from ..utilities import InvalidDataException, check_types
 
 class HardTanh(Activation):
     """
@@ -16,7 +17,10 @@ class HardTanh(Activation):
         The upper bounding limit of this instance, any values in the array that are above it
         will be assigned this value.
     """
+    @check_types()
     def __init__(self, lower: float = -1.0, upper: float = 1.0):
+        if lower > upper:
+            raise InvalidDataException("Argument \"lower\" must be greater than argument \"upper\".")
         self.min = lower
         self.max = upper
 

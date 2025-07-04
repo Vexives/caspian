@@ -1,4 +1,5 @@
 from . import Scheduler
+from ..utilities import check_types
 
 class LambdaLR(Scheduler):
     """
@@ -21,6 +22,7 @@ class LambdaLR(Scheduler):
     epoch : int
         The epoch or step that the scheduler is currently on.
     """
+    @check_types()
     def __init__(self, funct: callable) -> None:
         self.funct = funct
         self.epoch = 0

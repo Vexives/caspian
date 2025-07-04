@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Activation
 from ..optimizers import Optimizer, StandardGD
+from ..utilities import check_types
 
 class PReLU(Activation):
     """
@@ -28,6 +29,7 @@ class PReLU(Activation):
     opt : Optimizer
         The chosen optimizer for this activation's weights, used when updating values.
     """
+    @check_types(("channels", lambda x: x > 0, "Argument \"channels\" must be greater than 0."))
     def __init__(self, channels: int = 1, axis: int = -1, 
                  init: float = 0.25, optimizer: Optimizer = StandardGD()):
         self.weights = np.ones((channels,)) * init

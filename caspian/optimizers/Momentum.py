@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Optimizer
 from ..schedulers import Scheduler, SchedulerLR
+from ..utilities import check_types
 
 class Momentum(Optimizer):
     """
@@ -15,6 +16,7 @@ class Momentum(Optimizer):
     scheduler : Scheduler
         The learn rate scheduler that this optimizer wraps.
     """
+    @check_types()
     def __init__(self, momentum: float = 0.9, learn_rate: float = 0.01,
                  sched: Scheduler = SchedulerLR()) -> None:
         super().__init__(learn_rate, sched)

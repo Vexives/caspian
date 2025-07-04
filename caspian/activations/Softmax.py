@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Activation
+from ..utilities import check_types
 
 class Softmax(Activation):
     """
@@ -22,6 +23,7 @@ class Softmax(Activation):
         return (err - (err * data).sum(axis=self.axis, keepdims=True)) * data \
                if err is not None else self.forward(data)
 
+    @check_types()
     def __init__(self, axis: int = -1):
         self.axis = axis
 

@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Activation
+from ..utilities import check_types
 
 class ELU(Activation):
     """
@@ -14,6 +15,7 @@ class ELU(Activation):
         A given float value representing the alpha value which any negative values
         will be multiplied by.
     """
+    @check_types()
     def __init__(self, alpha: float = 0.05):
         self.alpha = alpha
     

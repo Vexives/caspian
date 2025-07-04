@@ -1,4 +1,5 @@
 from . import Scheduler
+from ..utilities import check_types
 
 class StepLR(Scheduler):
     """
@@ -15,6 +16,7 @@ class StepLR(Scheduler):
     epoch : int
         The epoch or step that the scheduler is currently on.
     """
+    @check_types()
     def __init__(self, steps: int, gamma: float = 0.1) -> None:
         self.steps = steps
         self.gamma = gamma

@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Optimizer
 from ..schedulers import Scheduler, SchedulerLR
+from ..utilities import check_types
 
 class RMSProp(Optimizer):
     """
@@ -21,6 +22,7 @@ class RMSProp(Optimizer):
     scheduler : Scheduler
         The learn rate scheduler that this optimizer wraps.
     """
+    @check_types()
     def __init__(self, decay: float = 0.9, eps: float = 1e-8,
                  learn_rate: float = 0.01, 
                  sched: Scheduler = SchedulerLR()) -> None:

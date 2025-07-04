@@ -1,4 +1,5 @@
 from ..cudalib import np
+from ..utilities import InvalidDataException, check_types
 
 class PoolFunc():
     '''
@@ -10,6 +11,7 @@ class PoolFunc():
     axis : int
         The axis at which the operation is performed on the data.
     '''
+    @check_types()
     def __init__(self, axis: int = -1):
         self.axis = axis
 

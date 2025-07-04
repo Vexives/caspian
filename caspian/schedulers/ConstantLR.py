@@ -1,4 +1,5 @@
 from . import Scheduler
+from ..utilities import check_types
 
 class ConstantLR(Scheduler):
     """
@@ -15,6 +16,7 @@ class ConstantLR(Scheduler):
     epoch : int
         The epoch or step that the scheduler is currently on.
     """
+    @check_types(("steps", lambda x: x > 0, "Argument \"steps\" must be greater than 0."))
     def __init__(self, steps: int, const: float = 0.1) -> None:
         self.steps = steps
         self.const = const

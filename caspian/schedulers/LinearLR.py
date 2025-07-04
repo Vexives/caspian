@@ -1,4 +1,5 @@
 from . import Scheduler
+from ..utilities import check_types
 
 class LinearLR(Scheduler):
     """
@@ -19,6 +20,7 @@ class LinearLR(Scheduler):
     epoch : int
         The current step of the scheduler.
     """
+    @check_types()
     def __init__(self, start_rate: float, end_rate: float, iters: int = 5) -> None:
         self.start_rate = start_rate
         self.end_rate = end_rate

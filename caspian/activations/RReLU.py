@@ -1,5 +1,6 @@
 from ..cudalib import np
 from . import Activation
+from ..utilities import InvalidDataException, check_types
 
 class RReLU(Activation):
     """
@@ -15,7 +16,10 @@ class RReLU(Activation):
     upper : float
         A given float value representing the upper bound of values to be sampled from randomly.
     """
+    @check_types()
     def __init__(self, lower: float = 0.125, upper: float = 1.0/3.0):
+        if lower > upper:
+            raise InvalidDataException("Argument \"lower\" must be greater than argument \"upper\".")
         self.lower = lower
         self.upper = upper
 

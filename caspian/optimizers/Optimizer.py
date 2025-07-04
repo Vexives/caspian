@@ -1,5 +1,6 @@
 from ..cudalib import np
 from ..schedulers import Scheduler, SchedulerLR
+from ..utilities import check_types
 
 class Optimizer():
     '''
@@ -8,6 +9,7 @@ class Optimizer():
 
     Performs no operations and takes no arguments.
     '''
+    @check_types()
     def __init__(self, learn_rate: float = 0.01, sched: Scheduler = SchedulerLR()) -> None:
         self.learn_rate = learn_rate
         self.scheduler = sched

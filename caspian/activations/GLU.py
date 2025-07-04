@@ -1,6 +1,6 @@
 from ..cudalib import np
 from . import Activation, Sigmoid
-from ..utilities import InvalidDataException
+from ..utilities import InvalidDataException, check_types
 
 class GLU(Activation):
     """
@@ -22,6 +22,7 @@ class GLU(Activation):
     axis : int
         A given integer value representing the axis that the data will be split by.
     """
+    @check_types()
     def __init__(self, axis: int = -1):
         self.axis = axis
         self.__sigmoid = Sigmoid()
