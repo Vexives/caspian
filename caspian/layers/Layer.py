@@ -7,7 +7,14 @@ class Layer():
     A basic layer container class which all Caspian network layers inherit from.
     Any custom layers should inherit from this container class.
     
-    Performs no operations and takes no arguments.
+    Performs no operations and takes the input/output sizes as base arguments.
+
+    Attributes
+    ----------
+    in_size : tuple[int, ...]
+        The expected input shape of the layer. If `None`, can be given any shape.
+    out_size : tuple[int, ...]
+        The expected output shape of the layer. If `None`, can return any shape.
     '''
     @check_types(("in_size", all_ints, "Incorrect input shape type - Must be all integers."),
                  ("out_size", all_ints, "Incorrect output shape type - Must be all integers."))

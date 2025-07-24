@@ -1,4 +1,4 @@
-from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear, Bilinear
+from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear, Bilinear, PositionalEncoding
 from caspian.activations import ReLU, Identity
 from caspian.utilities import InvalidDataException, ShapeIncompatibilityException, BackwardSequenceException
 import numpy as np
@@ -460,3 +460,47 @@ def test_upsample3D():
     context = layer.save_to_file()
     layer2 = Upsampling3D.from_save(context)
     assert layer2.rate == layer.rate
+
+
+
+
+
+def test_pos_encoding():
+    # Invalid value tests
+    with pytest.raises(InvalidDataException):
+        _ = PositionalEncoding(-1, 1)
+
+    with pytest.raises(InvalidDataException):
+        _ = PositionalEncoding(1, -1)
+
+    with pytest.raises(InvalidDataException):
+        _ = PositionalEncoding(1.1, 1)
+
+    with pytest.raises(InvalidDataException):
+        _ = PositionalEncoding(1, 1.1)
+
+    with pytest.raises(InvalidDataException):
+        _ = PositionalEncoding(1, 11)
+
+
+    # Standard usage tests
+    layer = PositionalEncoding(32, 20)
+    data_in = np.zeros((16, 20))
+    assert layer(data_in).shape == data_in.shape
+    assert np.allclose(layer.backward(data_in), data_in)
+
+    data_in = np.zeros((33, 20))
+    with pytest.raises(InvalidDataException):
+        _ = layer(data_in)
+    
+
+    # Deepcopy
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert np.allclose(layer2.encoding, layer.encoding)
+
+
+    # Saving
+    context = layer.save_to_file()
+    layer2 = PositionalEncoding.from_save(context)
+    assert np.allclose(layer2.encoding, layer.encoding)

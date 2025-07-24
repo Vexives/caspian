@@ -78,7 +78,7 @@ class PositionalEncoding(Layer):
 
     def deepcopy(self) -> 'PositionalEncoding':
         """Creates a new deepcopy of this layer with the exact same parameters."""
-        return PositionalEncoding(self.dim_size, self.max_length)
+        return PositionalEncoding(self.max_length, self.dim_size)
     
 
     def save_to_file(self, filename: str = None) -> None | str:
@@ -97,7 +97,7 @@ class PositionalEncoding(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"PositionalEncoding\u00A0{self.dim_size}\u00A0{self.max_length}\n\u00A0" 
+        write_ret_str = f"PositionalEncoding\u00A0{self.max_length}\u00A0{self.dim_size}\n\u00A0" 
         if not filename:
             return write_ret_str
         if filename.find(".cspn") == -1:

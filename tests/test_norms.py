@@ -1,4 +1,4 @@
-from caspian.layers import BatchNorm, LayerNorm
+from caspian.layers import BatchNorm, LayerNorm, RMSNorm
 from caspian.utilities import InvalidDataException
 import numpy as np
 import pytest
@@ -175,6 +175,75 @@ def test_layernorm():
     # Saving and loading
     context = layer.save_to_file()
     load_layer = LayerNorm.from_save(context)
+    assert load_layer.bias_weight is None
+    assert np.allclose(load_layer.layer_weight, layer.layer_weight)
+    assert load_layer.in_size == layer.in_size
+    assert load_layer.out_size == layer.out_size
+    assert load_layer.var_eps == layer.var_eps
+
+
+
+
+def test_rmsnorm():
+    # Invalid init tests
+    with pytest.raises(InvalidDataException):
+        _ = RMSNorm("test")
+
+    with pytest.raises(InvalidDataException):
+        _ = RMSNorm((5, 10, 10), "test")
+
+    with pytest.raises(InvalidDataException):
+        _ = RMSNorm((5, 10, 10), False, "test")
+
+    with pytest.raises(InvalidDataException):
+        _ = RMSNorm((5, 10, 10), var_eps = 0.0)
+
+
+    # Affine variable presence
+    layer = RMSNorm((5, 10, 10), True, False)
+    assert layer.layer_weight is not None
+    assert layer.bias_weight is None
+
+    layer = RMSNorm((5, 10, 10), False, True)
+    assert layer.layer_weight is None
+    assert layer.bias_weight is not None
+
+    l1 = RMSNorm((5, 10, 10), True, True)
+    l2 = RMSNorm((5, 10, 10), False, False)
+    data_in = np.random.uniform(0.0, 1.0, (5, 5, 10, 10))
+    x, y = l1(data_in), l2(data_in)
+    assert x.shape == y.shape
+    assert type(l2.layer_weight) is not type(l1.layer_weight)
+    assert type(l2.bias_weight) is not type(l1.bias_weight)
+    
+    l1 = RMSNorm((5, 10, 10), False, False)
+    l2 = RMSNorm((5, 10, 10), False, False)
+    data_in = np.random.uniform(0.0, 1.0, (5, 5, 10, 10))
+    x, y = l1(data_in), l2(data_in)
+    assert x.shape == y.shape
+    assert np.allclose(x, y)
+
+
+    # Private variable access
+    _ = layer(data_in, True)
+    with pytest.raises(AttributeError):
+        _ = layer.__norm_res
+
+
+    # Deepcopy
+    layer = RMSNorm((5, 10, 20, 15), True, False, 1e-9)
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert layer2.bias_weight is None
+    assert np.allclose(layer2.layer_weight, layer.layer_weight)
+    assert layer2.in_size == layer.in_size
+    assert layer2.out_size == layer.out_size
+    assert layer2.var_eps == layer.var_eps
+
+
+    # Saving and loading
+    context = layer.save_to_file()
+    load_layer = RMSNorm.from_save(context)
     assert load_layer.bias_weight is None
     assert np.allclose(load_layer.layer_weight, layer.layer_weight)
     assert load_layer.in_size == layer.in_size
