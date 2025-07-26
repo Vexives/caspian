@@ -120,7 +120,7 @@ class Attention(Layer):
         return att_score @ v_vals
     
 
-    def backward(self, cost_err: np.ndarray) -> np.ndarray:
+    def backward(self, cost_err: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Performs a backward propagation pass through this layer and updates the internal linear layers 
         according to the provided learning gradient.
@@ -148,7 +148,7 @@ class Attention(Layer):
 
         # Pre-linear gradients
         v_grad = np.moveaxis(self.__last_score, -1, -2) @ cost_err
-        k_grad = soft_grad @ last_q
+        k_grad = np.moveaxis(np.moveaxis(last_q, -1, -2) @ soft_grad, -1, -2)
         q_grad = soft_grad @ last_k
 
         # Post-linear gradients
@@ -191,7 +191,7 @@ class Attention(Layer):
 
     def deepcopy(self) -> 'Attention':
         """Creates a new deepcopy of this layer with the exact same weights (if applicable) and parameters."""
-        new_neuron = Attention(self.d_embed, self.use_mask)
+        new_neuron = Attention(self.d_embed, self.use_mask, self.use_bias)
         new_neuron.__q_layer = self.__q_layer.deepcopy()
         new_neuron.__k_layer = self.__k_layer.deepcopy()
         new_neuron.__v_layer = self.__v_layer.deepcopy()
@@ -268,8 +268,10 @@ class Attention(Layer):
             q_bias = data_arr[4].split("\u00A0")[1]
             k_bias = data_arr[5].split("\u00A0")[1]
             v_bias = data_arr[6].split("\u00A0")[1]
+
+
             
-            new_neuron = Attention(d_e := int(prop_info[0]), bool(prop_info[1]), bool(prop_info[2]), parse_opt_info(prop_info[3]))
+            new_neuron = Attention(d_e := int(prop_info[0]), prop_info[1] == "True", prop_info[2] == "True", parse_opt_info(prop_info[3]))
             new_neuron.__q_layer.layer_weight = np.array(list(map(float, q_weights.split()))).reshape((d_e, d_e))
             new_neuron.__k_layer.layer_weight = np.array(list(map(float, k_weights.split()))).reshape((d_e, d_e))
             new_neuron.__v_layer.layer_weight = np.array(list(map(float, v_weights.split()))).reshape((d_e, d_e))

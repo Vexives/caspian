@@ -122,32 +122,34 @@ class MultiHeadAttention(Layer):
             The forward propagated array with the shape equal to this layer's output shape.
         """
         # Linear-layer processing and reshaping
-        q_vals = self.__q_layer(q_data, training).reshape(q_data.shape[0], -1, self.num_heads, self.head_size)
-        q_vals = np.moveaxis(q_vals, -1, -2)
+        q_vals = self.__q_layer(q_data, training).reshape(-1, q_data.shape[-2], self.num_heads, self.head_size)
+        q_vals = np.moveaxis(q_vals, 1, 2)
 
-        k_vals = self.__k_layer(k_data, training).reshape(k_data.shape[0], -1, self.num_heads, self.head_size)
-        k_vals = np.moveaxis(k_vals, -1, -2)
+        k_vals = self.__k_layer(k_data, training).reshape(-1, k_data.shape[-2], self.num_heads, self.head_size)
+        k_vals = np.moveaxis(k_vals, 1, 2)
 
-        v_vals = self.__v_layer(v_data, training).reshape(v_data.shape[0], -1, self.num_heads, self.head_size)
-        v_vals = np.moveaxis(v_vals, -1, -2)
+        v_vals = self.__v_layer(v_data, training).reshape(-1, v_data.shape[-2], self.num_heads, self.head_size)
+        v_vals = np.moveaxis(v_vals, 1, 2)
 
-        # Initial attention scores and value mat-mul
+        # Initial attention scores and dropout
         qk_set = q_vals @ np.moveaxis(k_vals, -1, -2)
         att_score = qk_set / np.sqrt(self.num_heads)
         if self.use_mask:                                               # Pre-softmax mask
             self.__mask = np.triu(np.ones_like(att_score) * -np.inf, 1)
             att_score += self.__mask
         att_score = self.__softmax(att_score)
+        att_score = self.__dropout(att_score, training)
 
-        # Save state and final linear layer
+        # Save state, value mat-mul, and final output layer
         if training:
             self.__last_ins = (q_vals, k_vals, v_vals)
             self.__last_score = att_score
-        qkv_full = np.moveaxis(att_score @ v_vals, -1, -2).reshape(v_data.shape)
+            self.__last_kv_shape = k_data.shape
+        qkv_full = np.moveaxis(att_score @ v_vals, -1, -2).reshape(q_data.shape)
         return self.__o_layer(qkv_full, training)
     
 
-    def backward(self, cost_err: np.ndarray) -> np.ndarray:
+    def backward(self, cost_err: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
         Performs a backward propagation pass through this layer and updates the internal linear layers 
         according to the provided learning gradient.
@@ -167,11 +169,13 @@ class MultiHeadAttention(Layer):
         # Initial grad reshaping and output layer gradient
         last_q, last_k, last_v = self.__last_ins
         o_grad = self.__o_layer.backward(cost_err)
-        o_grad = o_grad.reshape(o_grad.shape[0], -1, self.num_heads, self.head_size)
-        o_grad = np.moveaxis(o_grad, -1, -2)
+        o_grad = o_grad.reshape(-1, o_grad.shape[-2], self.num_heads, self.head_size)
+        o_grad = np.moveaxis(o_grad, 1, 2)
 
-        # Re-apply mask if applicable, and calculate the main score gradient
+        # Calculate the main score gradient and apply the mask if applicable
         new_err = o_grad @ np.moveaxis(last_v, -1, -2)
+        new_err = self.__dropout.backward(new_err)
+
         soft_grad = self.__softmax(self.__last_score, new_err)
         if self.use_mask is True:
             soft_grad = np.tril(soft_grad)
@@ -179,13 +183,13 @@ class MultiHeadAttention(Layer):
 
         # Pre-linear gradients
         v_grad = np.moveaxis(self.__last_score, -1, -2) @ o_grad
-        k_grad = soft_grad @ last_q
+        k_grad = np.moveaxis(np.moveaxis(last_q, -1, -2) @ soft_grad, -1, -2)
         q_grad = soft_grad @ last_k
 
         # Post-linear gradients
         q_grad = self.__q_layer.backward(q_grad.reshape(cost_err.shape))
-        k_grad = self.__k_layer.backward(k_grad.reshape(cost_err.shape))
-        v_grad = self.__v_layer.backward(v_grad.reshape(cost_err.shape))
+        k_grad = self.__k_layer.backward(k_grad.reshape(self.__last_kv_shape))
+        v_grad = self.__v_layer.backward(v_grad.reshape(self.__last_kv_shape))
         return q_grad, k_grad, v_grad
 
 
@@ -201,6 +205,7 @@ class MultiHeadAttention(Layer):
         """Clears the optimizer gradient history and deletes any data required by the backward pass."""
         self.__last_ins = None
         self.__last_score = None
+        self.__last_kv_shape = None
         self.__q_layer.clear_grad()
         self.__k_layer.clear_grad()
         self.__v_layer.clear_grad()
@@ -312,7 +317,7 @@ class MultiHeadAttention(Layer):
             o_bias = data_arr[8].split("\u00A0")[1]
             
             new_neuron = MultiHeadAttention(d_e := int(prop_info[0]), int(prop_info[1]), float(prop_info[2]),
-                                            bool(prop_info[3]), bool(prop_info[4]), parse_opt_info(prop_info[5]))
+                                            prop_info[3] == "True", prop_info[4] == "True", parse_opt_info(prop_info[5]))
             new_neuron.__q_layer.layer_weight = np.array(list(map(float, q_weights.split()))).reshape((d_e, d_e))
             new_neuron.__k_layer.layer_weight = np.array(list(map(float, k_weights.split()))).reshape((d_e, d_e))
             new_neuron.__v_layer.layer_weight = np.array(list(map(float, v_weights.split()))).reshape((d_e, d_e))
