@@ -1,6 +1,6 @@
 from ..cudalib import np
 from ..optimizers import Optimizer
-from ..utilities import all_ints, check_types, InvalidDataException
+from ..utilities import all_ints, check_types
 
 class Layer():
     '''

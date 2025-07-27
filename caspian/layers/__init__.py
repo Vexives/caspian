@@ -29,6 +29,7 @@ from .Concat import Concat
 from .PositionalEncoding import PositionalEncoding
 from .Attention import Attention
 from .MultiHeadAttention import MultiHeadAttention
+from .CosineSimilarity import CosineSimilarity
 
 layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "Linear":Linear,
@@ -60,5 +61,6 @@ layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "Concat":Concat,
                                 "PositionalEncoding":PositionalEncoding,
                                 "Attention":Attention,
-                                "MultiHeadAttention":MultiHeadAttention
+                                "MultiHeadAttention":MultiHeadAttention,
+                                "CosineSimilarity":CosineSimilarity
                                 }
