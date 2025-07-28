@@ -1,4 +1,4 @@
-from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear, Bilinear, PositionalEncoding
+from caspian.layers import Layer, Container, Dropout, Reshape, Sequence, Upsampling1D, Upsampling2D, Upsampling3D, Linear, Bilinear, PositionalEncoding, CosineSimilarity
 from caspian.activations import ReLU, Identity
 from caspian.utilities import InvalidDataException, ShapeIncompatibilityException, BackwardSequenceException
 import numpy as np
@@ -464,7 +464,6 @@ def test_upsample3D():
 
 
 
-
 def test_pos_encoding():
     # Invalid value tests
     with pytest.raises(InvalidDataException):
@@ -504,3 +503,65 @@ def test_pos_encoding():
     context = layer.save_to_file()
     layer2 = PositionalEncoding.from_save(context)
     assert np.allclose(layer2.encoding, layer.encoding)
+
+
+
+
+def test_cosinesimilarity():
+    # Invalid value tests
+    with pytest.raises(InvalidDataException):
+        _ = CosineSimilarity(1.1)
+    
+    with pytest.raises(InvalidDataException):
+        _ = CosineSimilarity(eps = "test")
+
+    with pytest.raises(InvalidDataException):
+        _ = CosineSimilarity(eps = 0.0)
+
+    with pytest.raises(InvalidDataException):
+        l = CosineSimilarity(2)
+        a = np.zeros((2, 5))
+        b = np.zeros((2, 5))
+        _ = l(a, b)
+
+    
+    # Standard usage tests
+    layer = CosineSimilarity(0)
+    a = np.arange(20).reshape(2, 10)
+    b = (np.arange(20) * 2).reshape(2, 10)
+    assert np.allclose(layer(a, b), np.ones((10,)))
+
+    layer2 = CosineSimilarity(1)
+    layer3 = CosineSimilarity(2)
+    a = np.random.randn(2, 4, 5)
+    b = np.random.randn(2, 4, 5)
+    assert layer(a, b, True).shape == (4, 5)
+    assert layer2(a, b, True).shape == (2, 5)
+    assert layer3(a, b, True).shape == (2, 4)
+
+    g_1 = np.random.randn(4, 5)
+    g_2 = np.random.randn(2, 5)
+    g_3 = np.random.randn(2, 4)
+    out_1a, out_1b = layer.backward(g_1)
+    out_2a, out_2b = layer2.backward(g_2)
+    out_3a, out_3b = layer3.backward(g_3)
+    assert out_1a.shape == a.shape
+    assert out_2a.shape == a.shape
+    assert out_3a.shape == a.shape
+    assert out_1b.shape == b.shape
+    assert out_2b.shape == b.shape
+    assert out_3b.shape == b.shape
+
+
+    # Deepcopy
+    layer_copy = layer.deepcopy()
+    assert layer_copy is not layer
+    assert layer_copy.dim == layer.dim
+    assert layer_copy.eps == layer.eps
+
+
+    # Saving
+    context = layer.save_to_file()
+    layer_s = CosineSimilarity.from_save(context)
+    assert layer_s.dim == layer.dim
+    assert layer_s.eps == layer.eps

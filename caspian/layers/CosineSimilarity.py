@@ -28,7 +28,7 @@ class CosineSimilarity(Layer):
     >>> print(res)
     0.9649505047327671
     """
-    @check_types()
+    @check_types(("eps", lambda x: x > 0, "Argument \"eps\" must be greater than 0."))
     def __init__(self, dim: int = 1, eps: float = 1e-8):
         """
         Initializes a `CosineSimilarity` layer using given parameters.
@@ -82,7 +82,9 @@ class CosineSimilarity(Layer):
         """
         if data_a.shape != data_b.shape:
             raise InvalidDataException(f"Data shapes could not be broadcasted. - {data_a.shape}, {data_b.shape}")
-        
+        if len(data_a.shape) <= abs(self.dim + int(self.dim < 0)):
+            raise InvalidDataException(f"Layer dimension out of range for data shapes. - {data_a.shape}, {data_b.shape}")
+
         a_mag = np.linalg.norm(data_a, axis=self.dim, keepdims=True)
         b_mag = np.linalg.norm(data_b, axis=self.dim, keepdims=True)
         mult_mag = np.maximum((a_mag * b_mag), self.eps)
@@ -93,7 +95,7 @@ class CosineSimilarity(Layer):
             self.__last_bm = b_mag
             self.__last_fm = mult_mag
             self.__last_ins = (data_a, data_b)
-            self.__last_res = cos_sim
+            self.__last_res = np.expand_dims(cos_sim, self.dim)
         return cos_sim
     
 
@@ -118,6 +120,7 @@ class CosineSimilarity(Layer):
         a_grad = (last_b / self.__last_fm) - (self.__last_res * (last_a / np.square(self.__last_bm)))
         b_grad = (last_a / self.__last_fm) - (self.__last_res * (last_b / np.square(self.__last_am)))
 
+        cost_err = np.expand_dims(cost_err, self.dim)
         a_grad *= cost_err
         b_grad *= cost_err
         return a_grad, b_grad
