@@ -1,9 +1,9 @@
 from ..cudalib import np
 from . import Loss
 
-class BinCrossEntropy(Loss):
+class BinaryCrossEntropy(Loss):
     """
-    A static class which gives both the forward and backward passes for the Binary Cross-Entropy
+    A static class which gives both the forward and backward passes for the Negative Log Likelihood
     loss function.
 
     Does not initialize, and does not keep any parameters.

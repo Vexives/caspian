@@ -308,8 +308,8 @@ class BatchNorm(Layer):
             r_var = None if rv_data[1] == "None" else np.array(list(map(float, rv_data[1].split()))).reshape((channels,))
 
             new_neuron = BatchNorm(channels, dims, 
-                                   False if gamma is None else True,
-                                   False if beta is None else True, 
+                                   gamma is not None,
+                                   beta is not None, 
                                    momentum, axis, eps, opt)
             new_neuron.gamma = gamma
             new_neuron.beta = beta
