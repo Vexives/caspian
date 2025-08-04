@@ -7,8 +7,8 @@ class GroupNorm(Layer):
     """
     A grouped channel-based normalization layer which normalizes data across a specified number of channels.
 
-    Supports any given shape and dimensionality as an input, as long as the data has at least 2 dimensions for
-    batches and channels (where channels must match the expected amount).
+    Supports any given shape and dimensionality as an input, as long as the number of dimensions (excluding the
+    batch dimension) is provided upon initialization.
        
         
     Attributes
@@ -20,6 +20,8 @@ class GroupNorm(Layer):
     channel_divs : int
         The number of expected channels divided by the number of groups, or the number of expected 
         channels in each group.
+    dims : int
+        The number of dimensions (not including batches) that the layer should expect from the input.
     var_eps : float
         A generally very small float which corresponds to the epsilon value added to the 
         square root variance during normalization.
@@ -35,7 +37,7 @@ class GroupNorm(Layer):
 
     Examples
     --------
-    >>> layer1 = GroupNorm(3, 6)
+    >>> layer1 = GroupNorm(3, 6, 3)
     >>> in_arr = np.random.randn(10, 6, 5, 5)
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
@@ -43,8 +45,9 @@ class GroupNorm(Layer):
     """
     @check_types(("groups", lambda x: x > 0, "Argument \"groups\" must be above 0."),
                  ("channels", lambda x: x > 0, "Argument \"channels\" must be above 0."),
+                 ("dims", lambda x: x > 0, "Argument \"dims\" must be above 0."),
                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be above 0.0."))
-    def __init__(self, groups: int, channels: int, weights: bool = True,
+    def __init__(self, groups: int, channels: int, dims: int, weights: bool = True, 
                  biases: bool = False, var_eps: float = 1e-8,
                  optimizer: Optimizer = StandardGD()):
         """
@@ -56,6 +59,8 @@ class GroupNorm(Layer):
             The number of groups that the channel dimension will be split into before processing.
         channels : int
             The number of expected channels that the input data will have.
+        dims : int
+            The number of dimensions (not including batches) that the layer should expect from the input.
         weights : bool, default: True
             A boolean which determines whether the learnable weight parameter array is initialized.
         biases : bool, default: True
@@ -72,6 +77,7 @@ class GroupNorm(Layer):
         self.channels = channels
         self.groups = groups
         self.channel_divs = channels // groups
+        self.dims = dims
         self.layer_weight = np.ones((self.groups, self.channel_divs, 1)) if weights is True else None
         self.bias_weight = np.zeros((self.groups, self.channel_divs, 1)) if biases is True else None
 
@@ -97,12 +103,11 @@ class GroupNorm(Layer):
         -------
         ndarray
             The forward propagated array with all values in each batch normalized.
-        """        
-        if len(data.shape) < 2:
-            raise InvalidDataException(f"Data must have at least 2 dimensions. - {data.shape}")
-        if data.shape[1] != self.channels:
+        """
+        batch_data = np.expand_dims(data, axis=0) if len(data.shape) == self.dims else data
+        if batch_data.shape[1] != self.channels:
             raise InvalidDataException(f"Data channels must be equal to the expected amount. - {data.shape}, {self.channels}")
-        shaped_data = data.reshape((data.shape[0], self.groups, self.channel_divs, -1))
+        shaped_data = batch_data.reshape((batch_data.shape[0], self.groups, self.channel_divs, -1))
 
         # Mean and variance of batches
         layer_mean = np.mean(shaped_data, axis=(-1, -2), keepdims=True)
@@ -138,7 +143,8 @@ class GroupNorm(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        shaped_err = cost_err.reshape((cost_err.shape[0], self.groups, self.channel_divs, -1))
+        batch_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) == self.dims else cost_err
+        shaped_err = batch_err.reshape((batch_err.shape[0], self.groups, self.channel_divs, -1))
         if self.layer_weight is not None:
             shaped_err *= self.layer_weight
 
@@ -184,7 +190,7 @@ class GroupNorm(Layer):
 
     def deepcopy(self) -> 'GroupNorm':
         """Creates a new deepcopy of this layer with the exact same weights (if applicable) and parameters."""
-        new_neuron = GroupNorm(self.groups, self.channels,
+        new_neuron = GroupNorm(self.groups, self.channels, self.dims,
                                self.layer_weight is not None, self.bias_weight is not None,
                                self.var_eps, self.opt.deepcopy())
         new_neuron.layer_weight = self.layer_weight.copy() if self.layer_weight is not None else None
@@ -208,7 +214,7 @@ class GroupNorm(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"GroupNorm\u00A0{self.groups}\u00A0{self.channels}\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
+        write_ret_str = f"GroupNorm\u00A0{self.groups}\u00A0{self.channels}\u00A0{self.dims}\u00A0{self.var_eps}\u00A0{repr(self.opt)}"
         write_ret_str += f"\nWEIGHTS\u00A0" + " ".join(list(map(str, self.layer_weight.flatten().tolist()))) \
                          if self.layer_weight is not None else "\nWEIGHTS\u00A0None"
         write_ret_str += f"\nBIASES\u00A0" + " ".join(list(map(str, self.bias_weight.flatten().tolist()))) \
@@ -250,14 +256,14 @@ class GroupNorm(Layer):
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
             params = data_arr[0].split("\u00A0")[1:]
-            groups, channels, eps = int(params[0]), int(params[1]), float(params[2])
+            groups, channels, dims, eps = int(params[0]), int(params[1]), int(params[2]), float(params[3])
             opt = parse_opt_info(params[-1])
 
             weight_data, bias_data = data_arr[1].split("\u00A0"), data_arr[2].split("\u00A0")
             weights = None if weight_data[1] == "None" else np.array(list(map(float, weight_data[1].split())))
             biases = None if bias_data[1] == "None" else np.array(list(map(float, bias_data[1].split())))
 
-            new_neuron = GroupNorm(groups, channels,
+            new_neuron = GroupNorm(groups, channels, dims,
                                    weights is not None,
                                    biases is not None,
                                    eps, opt)

@@ -1,12 +1,12 @@
 from ..cudalib import np
 from . import Layer
 from ..optimizers import Optimizer, StandardGD, parse_opt_info
-from ..utilities import check_types, InvalidDataException
+from ..utilities import check_types
 
-class BatchNorm(Layer):
+class InstanceNorm(Layer):
     """
-    A batch normalization layer which normalizes the given data across all dimensions
-    except for the channels/features.
+    An instance normalization layer which normalizes the given data across all dimensions
+    except for the channels/features and the batches (if applicable).
 
     Supports any given shape and dimensionality as an input, as long as that number of dimensions is
     provided (batch dimension NOT included).
@@ -22,9 +22,6 @@ class BatchNorm(Layer):
     momentum : float
         The momentum value multiplied by the running mean and variance at each learning pass. If set
         to `None`, the running variables will not be initialized.
-    axis : int
-        The axis in which the expected channels of the input arrays are. Default value is 1, with the
-        0th dimension being the batches.
     var_eps : float
         A generally very small float which corresponds to the epsilon value added to the 
         square root variance during normalization.
@@ -46,7 +43,7 @@ class BatchNorm(Layer):
 
     Examples
     --------
-    >>> layer1 = BatchNorm(5, 3)
+    >>> layer1 = InstanceNorm(5, 3)
     >>> in_arr = np.random.randn(4, 5, 10, 10)
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
@@ -58,10 +55,10 @@ class BatchNorm(Layer):
                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be greater than 0.0."))
     def __init__(self, channels: int, dimensions: int, 
                  scale: bool = True, shift: bool = True, 
-                 momentum: float | None = 0.9, axis: int = 1,
-                 var_eps: float = 1e-8, optimizer: Optimizer = StandardGD()) -> None:
+                 momentum: float | None = 0.9, var_eps: float = 1e-8, 
+                 optimizer: Optimizer = StandardGD()) -> None:
         """
-        Initializes a `BatchNorm` layer using given parameters.
+        Initializes an `InstanceNorm` layer using given parameters.
 
         Parameters
         ----------
@@ -77,31 +74,25 @@ class BatchNorm(Layer):
         momentum : float | None, default: 0.9
             The momentum of the running mean and variance of this layer. Set to `None` for the running
             variables to not be used.
-        axis : int, default: 1
-            The axis of channels of the expected input arrays. Standard expected channel axis from other layers
-            is 1, with axis 0 representing the batches.
         var_eps : float, default: 1e-8
             A float which corresponds to the epsilon value added to the square root variance during normalization.
         optimizer : Optimizer, default: StandardGD()
             An optimizer class which processes given loss gradients and adjusts them to match a desired 
             gradient descent path.        
         """
-        if axis > dimensions:
-            raise InvalidDataException("Argument \"axis\" should not be greater than number of dimensions.")
         super().__init__(None, None)
         self.channels = channels
         self.dims = dimensions
         self.var_eps = var_eps
-        self.axis = axis
         self.opt = optimizer
 
         self.momentum = momentum
-        self.running_mean = np.zeros((channels,)) if self.momentum is not None else None
-        self.running_var = np.ones((channels,)) if self.momentum is not None else None
+        self.running_mean = np.zeros((channels, 1)) if self.momentum is not None else None
+        self.running_var = np.ones((channels, 1)) if self.momentum is not None else None
 
-        self.gamma = np.ones((channels,)) if scale is True else None
-        self.beta = np.zeros((channels,)) if shift is True else None
-    
+        self.gamma = np.ones((channels, 1)) if scale is True else None
+        self.beta = np.zeros((channels, 1)) if shift is True else None
+
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         """
@@ -123,12 +114,11 @@ class BatchNorm(Layer):
             The forward propagated array with all values normalized.
         """        
         batch_data = np.expand_dims(data, axis=0) if len(data.shape) == self.dims else data
-        batch_data = batch_data.swapaxes(self.axis, -1)
-        shaped_data = batch_data.reshape((-1, batch_data.shape[-1]))
+        shaped_data = batch_data.reshape((*batch_data.shape[:2], -1))
 
         #Mean and variance of batches
-        batch_mean = np.mean(shaped_data, axis=0, keepdims=True)
-        batch_var = np.var(shaped_data, axis=0, keepdims=True)
+        batch_mean = np.mean(shaped_data, axis=-1, keepdims=True)
+        batch_var = np.var(shaped_data, axis=-1, keepdims=True)
 
         #Training of running mean and running variance (if applicable)
         if training:
@@ -152,7 +142,7 @@ class BatchNorm(Layer):
         new_data = self.gamma * new_data if self.gamma is not None else new_data
         new_data = new_data + self.beta if self.beta is not None else new_data
 
-        return new_data.reshape(batch_data.shape).swapaxes(self.axis, -1)
+        return new_data.reshape(data.shape)
     
 
     def backward(self, cost_err: np.ndarray) -> np.ndarray:
@@ -174,26 +164,25 @@ class BatchNorm(Layer):
         """
         #Update gamma and beta with optimzied gradient (if applicable)
         batch_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) == self.dims else cost_err
-        batch_err = batch_err.swapaxes(self.axis, -1)
-
-        shaped_err = batch_err.reshape((-1, batch_err.shape[-1]))
+        shaped_err = batch_err.reshape((*batch_err.shape[:2], -1))
         shaped_err *= self.gamma if self.gamma is not None else 1
 
         opt_err = self.opt.process_grad(shaped_err)                   #Gamma/Beta update gradient with optimizer
 
         elem_num = 1.0 / shaped_err.shape[0]
-        d_m = (shaped_err * (-self.__last_v)).mean(axis=0)
-        d_v = (shaped_err * (self.__last_in - self.__last_m)).sum(axis=0) * (-0.5 * (self.__last_v + self.var_eps)**-1.5)
+        d_m = (shaped_err * (-self.__last_v)).mean(axis=-1, keepdims=True)
+        d_v = (shaped_err * (self.__last_in - self.__last_m)).sum(axis=-1, keepdims=True) * \
+              (-0.5 * (self.__last_v + self.var_eps)**-1.5)
 
         ret_grad = shaped_err * self.__last_v + d_v * 2 * (self.__last_in - self.__last_m) * elem_num \
                    + d_m * elem_num
         
         if self.gamma is not None:
-            self.gamma += (opt_err * self.__norm_res).sum(axis=0)
+            self.gamma += np.squeeze((opt_err * self.__norm_res).sum(axis=(0, -1), keepdims=True), 0)
     
         if self.beta is not None:
-            self.beta += opt_err.sum(axis=0)
-        return ret_grad.reshape(batch_err.shape).swapaxes(self.axis, -1)
+            self.beta += np.squeeze(opt_err.sum(axis=(0, -1), keepdims=True), 0)
+        return ret_grad.reshape(cost_err.shape)
     
 
     def step(self) -> None:
@@ -223,12 +212,11 @@ class BatchNorm(Layer):
         self.opt = opt
 
 
-    def deepcopy(self) -> 'BatchNorm':
+    def deepcopy(self) -> 'InstanceNorm':
         """Creates a new deepcopy of this layer with the exact same weights (if applicable) and parameters."""
-        new_neuron = BatchNorm(self.channels, self.dims,
-                               self.gamma is not None, self.beta is not None,
-                               self.momentum, self.axis,
-                               self.var_eps, self.opt.deepcopy())
+        new_neuron = InstanceNorm(self.channels, self.dims,
+                                  self.gamma is not None, self.beta is not None,
+                                  self.momentum, self.var_eps, self.opt.deepcopy())
         new_neuron.gamma = self.gamma.copy() if self.gamma is not None else None
         new_neuron.beta = self.beta.copy() if self.beta is not None else None
         new_neuron.running_mean = self.running_mean.copy() if self.running_mean is not None else None
@@ -252,7 +240,7 @@ class BatchNorm(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"BatchNorm\u00A0{self.channels}\u00A0{self.dims}\u00A0{self.axis}\u00A0{repr(self.opt)}" + \
+        write_ret_str = f"InstanceNorm\u00A0{self.channels}\u00A0{self.dims}\u00A0{repr(self.opt)}" + \
                         f"\nPARAMS\u00A0{self.momentum}\u00A0{self.var_eps}"
         write_ret_str += f"\nGAMMA\u00A0" + " ".join(list(map(str, self.gamma.flatten().tolist()))) if self.gamma is not None else "\nGAMMA\u00A0None"
         write_ret_str += f"\nBETA\u00A0" + " ".join(list(map(str, self.beta.flatten().tolist()))) if self.beta is not None else "\nBETA\u00A0None"
@@ -270,7 +258,7 @@ class BatchNorm(Layer):
 
 
     @staticmethod
-    def from_save(context: str, file_load: bool = False) -> 'BatchNorm':
+    def from_save(context: str, file_load: bool = False) -> 'InstanceNorm':
         """
         A static method which creates an instance of this layer class based on the information provided.
         The string provided can either be a file name/path, or the encoded string containing the layer's
@@ -289,13 +277,13 @@ class BatchNorm(Layer):
 
         Returns
         -------
-        BatchNorm
-            A new `BatchNorm` layer containing all of the information encoded in the string or file provided.
+        InstanceNorm
+            A new `InstanceNorm` layer containing all of the information encoded in the string or file provided.
         """
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
             gen_info = data_arr[0].split("\u00A0")[1:]
-            channels, dims, axis = tuple(map(int, gen_info[:-1]))
+            channels, dims = tuple(map(int, gen_info[:-1]))
             opt = parse_opt_info(gen_info[-1])
             momentum, eps = tuple(map(float, data_arr[1].split("\u00A0")[1:]))
 
@@ -307,10 +295,10 @@ class BatchNorm(Layer):
             r_mean = None if rm_data[1] == "None" else np.array(list(map(float, rm_data[1].split()))).reshape((channels,))
             r_var = None if rv_data[1] == "None" else np.array(list(map(float, rv_data[1].split()))).reshape((channels,))
 
-            new_neuron = BatchNorm(channels, dims, 
-                                   gamma is not None,
-                                   beta is not None, 
-                                   momentum, axis, eps, opt)
+            new_neuron = InstanceNorm(channels, dims, 
+                                      gamma is not None,
+                                      beta is not None, 
+                                      momentum, eps, opt)
             new_neuron.gamma = gamma
             new_neuron.beta = beta
             new_neuron.running_mean = r_mean
