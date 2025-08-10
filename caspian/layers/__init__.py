@@ -19,6 +19,7 @@ from .Conv3D import Conv3D
 from .Conv3DTranspose import Conv3DTranspose
 from .Pooling3D import Pooling3D
 from .Upsampling3D import Upsampling3D
+from .ConvND import ConvND
 from .Bilinear import Bilinear
 from .Container import Container
 from .Embedding import Embedding
@@ -48,6 +49,7 @@ layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "Conv2DTranspose":Conv2DTranspose,
                                 "Conv3D":Conv3D,
                                 "Conv3DTranspose":Conv3DTranspose,
+                                "ConvND":ConvND,
                                 "Upsampling1D":Upsampling1D,
                                 "Upsampling2D":Upsampling2D,
                                 "Upsampling3D":Upsampling3D,

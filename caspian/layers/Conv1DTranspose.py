@@ -239,7 +239,7 @@ class Conv1DTranspose(Layer):
             If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
         if not confirm_shape(cost_err.shape, self.out_size, 2):
-            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
+            raise UnsafeMemoryAccessException(f"Gradient data shape does not match expected shape. - {cost_err.shape}, {self.out_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
 
         #Optimized & standard gradient preparation
