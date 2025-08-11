@@ -75,7 +75,7 @@ class Conv3DTranspose(Layer):
 
     Examples
     --------
-    >>> layer1 = Conv2DTranspose(ReLU(), 2, 3, (5, 9, 8, 7), strides=1)
+    >>> layer1 = Conv3DTranspose(ReLU(), 2, 3, (5, 9, 8, 7), strides=1)
     >>> in_arr = np.random.uniform(0.0, 1.0, (5, 9, 8, 7))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
