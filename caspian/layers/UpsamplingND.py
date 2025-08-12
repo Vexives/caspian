@@ -2,39 +2,39 @@ from ..cudalib import np
 from . import Layer
 from ..utilities import all_ints, all_positive, check_types
 
-class Upsampling2D(Layer):
+class UpsamplingND(Layer):
     """
-    An upsampling layer which scales the last two dimensions of the input by a given factor.
+    An upsampling layer which scales the last N-2 dimensions of the input by a given factor.
 
     Supports any given shape and dimensionality as an input, but only performs the operation
-    on the last two layers.
+    on the last N-2 layers. Assumes batches and channels are a part of the data's dimensions.
         
     Attributes
     ---------
-    rate : tuple[int, int]
-        The multiplicative size scaling rate of this layer for both dimensions.
+    rate : tuple[int, ...] | int
+        The multiplicative size scaling rate of this layer for all N-2 dimensions.
 
 
     Examples
     --------
-    >>> layer1 = Upsampling2D((3, 1))
-    >>> in_arr = np.ones((2, 10, 10))
+    >>> layer1 = UpsamplingND((3, 1, 2, 3, 4))
+    >>> in_arr = np.ones((2, 10, 10, 10, 10, 10))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
-    (2, 30, 10)
+    (2, 30, 10, 20, 30, 40)
     """
     @check_types(("rate", all_ints, "Argument \"rate\" must be an integer or tuple of integers."),
                  ("rate", all_positive, "Argument \"rate\" must have all values above 0."),
-                 ("rate", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"rate\" must have a length of 2."))
-    def __init__(self, rate: tuple[int, int] | int):
+                 ("rate", lambda x: isinstance(x, int) or len(x) >= 1, "Argument \"rate\" must have a length of at least 1."))
+    def __init__(self, rate: tuple[int, ...] | int):
         """
-        Initializes an `Upsampling2D` layer using given parameters.
+        Initializes an `UpsamplingND` layer using given parameters.
 
         Parameters
         ----------
-        rate : tuple[int, int] | int
+        rate : tuple[int, int, int] | int
             An int or tuple of ints which represent the multiplicative size scaling rate of this 
-            layer for both dimensions.
+            layer for all three dimensions.
 
         Raises
         ------
@@ -43,7 +43,7 @@ class Upsampling2D(Layer):
             any value not greater than 0.
         """
         super().__init__(None, None)
-        self.rate = rate if isinstance(rate, tuple) else (rate, rate)
+        self.rate = rate
     
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
@@ -63,9 +63,12 @@ class Upsampling2D(Layer):
         ndarray
             The forward propagated array with a new upsampled size.
         """
+        dim_scales = np.ones(self.rate) if type(self.rate) != int \
+                     else np.ones((self.rate,) * (len(data.shape) - 2))
         if training:
             self.__last_in = data
-        return np.kron(data, np.ones(self.rate))
+            self.__last_rate = dim_scales
+        return np.kron(data, dim_scales)
     
 
     def backward(self, cost_err: np.ndarray) -> np.ndarray:
@@ -84,8 +87,9 @@ class Upsampling2D(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        ret_grad = cost_err.reshape((-1, *self.rate, *self.__last_in.shape[-2:])) \
-                   .sum(axis=(-3, -4)) \
+        d_l = len(self.__last_rate.shape)
+        ret_grad = cost_err.reshape((-1, *self.__last_rate.shape, *self.__last_in.shape[-d_l:])) \
+                   .sum(axis=tuple(range(1, d_l+1))) \
                    .reshape(self.__last_in.shape)
         return ret_grad
     
@@ -98,6 +102,7 @@ class Upsampling2D(Layer):
     def clear_grad(self) -> None:
         """Clears any data required by the backward pass."""
         self.__last_in = None
+        self.__last_rate = None
 
 
     def set_optimizer(self, *_) -> None:
@@ -105,9 +110,9 @@ class Upsampling2D(Layer):
         pass
 
 
-    def deepcopy(self) -> 'Upsampling2D':
+    def deepcopy(self) -> 'UpsamplingND':
         """Creates a new deepcopy of this layer with the exact same parameters."""
-        new_neuron = Upsampling2D(self.rate)
+        new_neuron = UpsamplingND(self.rate)
         return new_neuron
     
 
@@ -127,7 +132,7 @@ class Upsampling2D(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Upsampling2D\u00A0" + " ".join(list(map(str, self.rate))) + "\n\u00A0" 
+        write_ret_str = f"UpsamplingND\u00A0" + " ".join(list(map(str, self.rate))) + "\n\u00A0" 
         if not filename:
             return write_ret_str
         if filename.find(".cspn") == -1:
@@ -138,7 +143,7 @@ class Upsampling2D(Layer):
 
 
     @staticmethod
-    def from_save(context: str, file_load: bool = False) -> 'Upsampling2D':
+    def from_save(context: str, file_load: bool = False) -> 'UpsamplingND':
         """
         A static method which creates an instance of this layer class based on the information provided.
         The string provided can either be a file name/path, or the encoded string containing the layer's
@@ -157,14 +162,14 @@ class Upsampling2D(Layer):
 
         Returns
         -------
-        Upsampling2D
-            A new `Upsampling2D` layer containing all of the information encoded in the string or file provided.
+        UpsamplingND
+            A new `UpsamplingND` layer containing all of the information encoded in the string or file provided.
         """
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
             prop_info = data_arr[0].split("\u00A0")
             
-            new_neuron = Upsampling2D(tuple(map(int, prop_info[1].split())))
+            new_neuron = UpsamplingND(tuple(map(int, prop_info[1].split())))
             return new_neuron
 
         if file_load:
