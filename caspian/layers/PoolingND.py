@@ -1,14 +1,17 @@
 from ..cudalib import np
 from . import Layer
 from ..pooling import PoolFunc, parse_pool_info
-from ..utilities import all_positive, all_ints, confirm_shape, check_types, UnsafeMemoryAccessException
+from ..utilities import all_positive, all_ints, confirm_shape, check_types, \
+                        UnsafeMemoryAccessException, InvalidDataException
 
-class Pooling2D(Layer):
+class PoolingND(Layer):
     """
-    A 2D pooling layer which performs a downsampling transformation on the data provided.
+    An any-dimensional pooling layer which performs a downsampling transformation on the data provided.
 
-    Only supports data with 3 or 4 (when batch is included) dimensions as input. The exact shape
-    and/or batch size must be specifically stated when initializing the layer.
+    Supports data of any size or shape containing at least 2 dimensions (one for channels, at least one for convolving).
+    The expected size must be specified in the `input_size` argument upon initialization.
+    All other parameters which are dependent on size, such as `kernel_size`, `padding`, and `strides`, must
+    be either integers or tuples with one less dimension than `input_size`.
 
     
     Memory Safety
@@ -19,109 +22,111 @@ class Pooling2D(Layer):
 
     Attributes
     ---------
-    in_size : tuple[int, int, int]
-        A tuple containing the expected input size `(C, H, W)`, where `C` is the number of channels, 
-        and `H`, `W` are the final dimensions of the input.
-    out_size : tuple[int, int, int]
-        A tuple containing the expected output size `(C, Oh, Ow)`, where `C` is the same 
-        as the input, with `Oh`, `Ow` representing the final pooled dimensions of the output.
+    in_size : tuple[int, ...]
+        A tuple containing the expected input size `(C, *)`, where `C` is the number of channels, 
+        and * represents the final dimensions of the input (at least 1). Will have a total of `N` dimensions.
+    out_size : tuple[int, ...]
+        A tuple containing the expected output size `(C, *)`, where `C` is the same number of channels
+        as the input, and `*` represents the new output dimension size. Will have `N` dimensions.
     funct : PoolFunc
         The given pooling function which takes specific data from each partition of the input.
-    stride_h, stride_w : int
-        The number of data points that the kernel will move over at each step of pooling. Represents
-        height and width strides respectively.
-    kernel_height, kernel_width : int
-        The size of each partition that will be taken from the original input array. Represents the 
-        height and width of the partition, respectively.
-    pad_height, pad_width : int
-        The total number of data points to be added to the input array as padding on the height and
-        width dimensions, respectively.
-    pad_left, pad_right : int
-        The number of data points to be added to the left and right sides of the data, respectively.
-        Corresponds to each half of `pad_width`, with `pad_left` being the first to increment.
-    pad_top, pad_bottom : int
-        The number of data points to be added to the top and bottom sides of the data, respectively.
-        Corresponds to each half of `pad_height`, with `pad_top` being the first to increment.
-    __window_shape : tuple[int, int, int, int, int, int]
-        The shape that the data will take whenever a strided view is created for forward and backward
-        passes.
+    pad_details : tuple[tuple[int, int], ...]
+        A tuple of tuples, defining the padding across each of the pooled dimensions given.
+    padding_all : tuple[int, ...]
+        The padding input value in tuple form that was provided at initialization. If the padding was given
+        as an integer, then the tuple will be of size `N-1`
+    strides_all : tuple[int, ...]
+        A tuple of integers representing the strides for each pooled dimension. Will have a size of `N-1`.
+    kernel_size : tuple[int, ...]
+        A tuple of integers representing the kernel size for each pooled dimension. Will have a size of `N-1`.
+    input_length : int
+        An integer representing the total number of dimensions (including channels) that is expected from
+        the input data. 
 
 
     Examples
     --------
-    >>> layer1 = Pooling2D(Maximum(), 3, (5, 9, 12), 3)
-    >>> in_arr = np.random.uniform(0.0, 1.0, (5, 9, 12))
+    >>> layer1 = PoolingND(Maximum(), 3, (5, 9, 12, 6, 9, 12), 3)
+    >>> in_arr = np.random.uniform(0.0, 1.0, (5, 9, 12, 6, 9, 12))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
-    (5, 3, 4)
+    (5, 3, 4, 2, 3, 4)
     """
     @check_types(("kernel_size", all_positive, "Argument \"kernel_size\" must be greater than 0."),
                  ("kernel_size", all_ints, "Argument \"kernel_size\" must contain all integers."),
-                 ("kernel_size", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"kernel_size\" must have a length of 2."),
 
                  ("strides", all_positive, "Argument \"strides\" must be greater than 0."),
                  ("strides", all_ints, "Argument \"strides\" must contain all integers."),                  
-                 ("strides", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"strides\" must have a length of 2."),
 
                  ("padding", lambda x: all_positive(x, True), "Argument \"padding\" must be greater than or equal to 0."),
                  ("padding", all_ints, "Argument \"padding\" must contain all integers."),
-                 ("padding", lambda x: isinstance(x, int) or len(x) == 2, "Argument \"padding\" must have a length of 2."),
 
                  ("input_size", all_positive, "Argument \"input_size\" must contain all positive values above 0."),
-                 ("input_size", lambda x: len(x) == 3, "Argument \"input_size\" must have a length of 3."))
-    def __init__(self, pool_funct: PoolFunc, kernel_size: tuple[int, int] | int, 
-                 input_size: tuple[int, int, int], 
-                 strides: tuple[int, int] | int = 1, padding: tuple[int, int] | int = 0) -> None:
+                 ("input_size", lambda x: len(x) >= 2, "Argument \"input_size\" must have a length of at least 2."))
+    def __init__(self, pool_funct: PoolFunc, 
+                 kernel_size: tuple[int, ...] | int, 
+                 input_size: tuple[int, ...], 
+                 strides: tuple[int, ...] | int = 1, 
+                 padding: tuple[int, ...] | int = 0) -> None:
         """
-        Initializes a `Pooling2D` layer using given parameters.
+        Initializes a `PoolingND` layer using given parameters.
 
         Parameters
         ----------
         pool_funct : PoolFunc
             A pooling function class which supports both forward and backward pooling 
             transformations.
-        kernel_size : tuple[int, int] | int
-            An integer or tuple of two integers representing the size of the sliding window to 
-            extract partitions of the input data.
-        input_size : tuple[int, int, int]
-            A tuple of integers matching the shape of the expected input arrays. If a fourth dimension is added,
-            the first dimension is used as the batch size.
-        strides : tuple[int, int] | int, default: 1
-            An integer that determines how many data points are skipped for every iteration of the 
-            sliding window. Must be greater than or equal to 1.
-        padding : tuple[int, int] | int, default: 0
-            An integer that determines how many empty data points are put on the edges of the final dimensions
-            as padding layers before pooling.
+        kernel_size : tuple[int, ...] | int
+            An integer or tuple of integers representing the size of the sliding window to extract 
+            partitions of the input data.
+        input_size : tuple[int, ...]
+            A tuple of integers matching the shape of the expected input arrays.
+        strides : tuple[int, ...] | int, default: 1
+            An integer or tuple of integers that determines how many data points are skipped for 
+            every iteration of the sliding window. Must be greater than or equal to 1.
+        padding : tuple[int, ...] | int, default: 0
+            An integer or tuple of integers that determines how many empty data points are put on 
+            the edges of the final dimensions as padding layers.
 
         Raises
         ------
         InvalidDataException
             If any of the data provided is not an integer or tuple of integers, or less than one 
             (with the exception of padding, which can be 0). Expected input size must be a tuple of integers, and
-            the pooling function must be of type `PoolFunc`.
+            the pooling function must be of type `PoolFunc`. Also applies to the expected input shape, which must 
+            be a tuple of integers. Padding, strides, and kernel size must ALL be either an integer or a tuple with 
+            N-1 dimensions, where input size has N > 2 dimensions. 
         """
+        # Extra dimensionality checks before processing
+        _in_len = len(input_size)-1
+        if type(kernel_size) != int and len(kernel_size) != _in_len:
+            raise InvalidDataException("Argument \"kernel_size\" must have one less dimension than expected input.")
+        if type(strides) != int and len(strides) != _in_len:
+            raise InvalidDataException("Argument \"strides\" must have one less dimension than expected input.")
+        if type(padding) != int and len(padding) != _in_len:
+            raise InvalidDataException("Argument \"strides\" must have one less dimension than expected input.")        
+
         #Pooling function
         self.funct = pool_funct
 
         #Strides and Kernel size initialization
-        self.stride_h, self.stride_w = strides if isinstance(strides, tuple) else (strides, strides)
-        self.kernel_height, self.kernel_width = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
+        self.input_length = len(input_size)
+        self.strides_all = strides if isinstance(strides, tuple) else (strides,) * _in_len
+        self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size,) * _in_len
 
         #Padding size initialization
-        self.pad_height, self.pad_width = padding if isinstance(padding, tuple) else (padding, padding)
-        self.pad_top, self.pad_bottom = ((self.pad_height+1)//2, self.pad_height//2)
-        self.pad_left, self.pad_right = ((self.pad_width+1)//2, self.pad_width//2)
+        self.padding_all = (padding,) * _in_len if type(padding) == int else padding
+        self.pad_details = ((0,0), (0,0)) + tuple(((p+1)//2, p//2) for p in self.padding_all)
 
         #Out-shape and sliding window shape initialization
         in_size = input_size
-        out_size = (in_size[0],
-                    (in_size[1] - self.kernel_height + self.pad_height) // self.stride_h + 1, 
-                    (in_size[2] - self.kernel_width + self.pad_width) // self.stride_w + 1)
+        out_size = (in_size[0],) + \
+                    tuple((in_size[i+1] - self.kernel_size[i] + self.padding_all[i]) // self.strides_all[i] + 1 \
+                         for i in range(_in_len))
         super().__init__(in_size, out_size)
         self.__window_shape = (*self.out_size, 
-                             self.kernel_height, 
-                             self.kernel_width)
-
+                               *self.kernel_size)
+        
 
     def forward(self, data: np.ndarray, training: bool = False) -> np.ndarray:
         """
@@ -145,30 +150,27 @@ class Pooling2D(Layer):
         UnsafeMemoryAccessException
             If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
-        if not confirm_shape(data.shape, self.in_size, 3):
+        if not confirm_shape(data.shape, self.in_size, self.input_length):
             raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {data.shape}, {self.in_size}")
-        new_data = np.expand_dims(data, axis=0) if len(data.shape) < 4 else data    #Enforce batches.
-        data_padded = np.pad(new_data, pad_width=((0, 0), (0, 0), 
-                                                  (self.pad_top, self.pad_bottom), 
-                                                  (self.pad_left, self.pad_right)), mode='constant')
-        strides = (data_padded.strides[0], 
+        new_data = np.expand_dims(data, axis=0) if len(data.shape) < self.input_length+1 else data    #Enforce batches.
+        data_padded = np.pad(new_data, pad_width=self.pad_details, mode='constant')
+
+        strides = (data_padded.strides[0],
                    data_padded.strides[1],
-                   self.stride_h * data_padded.strides[2], 
-                   self.stride_w * data_padded.strides[3], 
-                   data_padded.strides[2], 
-                   data_padded.strides[3])
+                   *tuple(map(lambda x,y: x*y, self.strides_all, data_padded.strides[2:])), 
+                   *data_padded.strides[2:])
         data_win_shape = (new_data.shape[0],) + self.__window_shape
 
         #Split into windows, and apply the pooling function to each window.
         data_windows = np.lib.stride_tricks.as_strided(data_padded, 
                                                        shape=data_win_shape, 
                                                        strides=strides)
-        pool_val = self.funct(data_windows.reshape((*data_windows.shape[:-2], -1)))
+        pool_val = self.funct(data_windows.reshape((*data_windows.shape[:-self.input_length+1], -1)))
 
         if training:
             self.__last_in = data_padded
 
-        if len(data.shape) < 4:
+        if len(data.shape) < self.input_length+1:
             pool_val = pool_val.squeeze(axis=0)
         return pool_val
     
@@ -194,42 +196,40 @@ class Pooling2D(Layer):
         UnsafeMemoryAccessException
             If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
-        if not confirm_shape(cost_err.shape, self.out_size, 3):
+        if not confirm_shape(cost_err.shape, self.out_size, self.input_length):
             raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
-        new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 4 else cost_err   #Enforce batches.
-        main_strides = (self.__last_in.strides[0], 
+        new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < self.input_length+1 else cost_err   #Enforce batches.
+        strides = (self.__last_in.strides[0], 
                    self.__last_in.strides[1],
-                   self.stride_h * self.__last_in.strides[2], 
-                   self.stride_w * self.__last_in.strides[3], 
-                   self.__last_in.strides[2], 
-                   self.__last_in.strides[3])
+                   *tuple(map(lambda x,y: x*y, self.strides_all, self.__last_in.strides[2:])),
+                   *self.__last_in.strides[2:])
         main_win_shape = (new_err.shape[0],) + self.__window_shape
         
         #Window frames for previous input / Mask creation
-        main_windows = np.lib.stride_tricks.as_strided(self.__last_in, 
+        main_windows = np.lib.stride_tricks.as_strided(self.__last_in,
                                                        main_win_shape, 
-                                                       main_strides)
-        mask = self.funct(main_windows.reshape((*main_windows.shape[:-2], -1)), backward=True) \
+                                                       strides)
+        mask = self.funct(main_windows.reshape((*main_windows.shape[:-self.input_length+1], -1)), backward=True) \
                          .reshape(main_windows.shape)
 
         #Use mask to distribute the gradient into the mask, reshaped into (channels, kernel height, kernel width, num of windows)
-        pre_grad = np.einsum("nghw,nghwxy->nghwxy", new_err, mask)
+        grad_match = (Ellipsis,) + (None,) * (self.input_length-1)
+        pre_grad = (mask * new_err[grad_match])
 
-        #Zero array of original size (channels, in height, in width)
+        # Zero array of original size (channels, in height, in width)
         ret_grad = np.zeros_like(self.__last_in)
         ret_windows = np.lib.stride_tricks.as_strided(ret_grad, 
                                                       main_win_shape, 
-                                                      main_strides)
+                                                      strides)
         np.add.at(ret_windows, (slice(None)), pre_grad)
         
         #Final cleanup
-        ret_grad = ret_grad[:, :, 
-                            self.pad_top:(-self.pad_bottom or None), 
-                            self.pad_left:(-self.pad_right or None)]
-        if len(cost_err.shape) < 4:
+        clip_vals = tuple(slice(x, (-y or None)) for (x, y) in self.pad_details)
+        ret_grad = ret_grad[clip_vals]
+        if len(cost_err.shape) < self.input_length+1:
             ret_grad = ret_grad.squeeze(axis=0)   
         return ret_grad
-    
+
 
     def step(self) -> None:
         """Not applicable for this layer."""
@@ -246,11 +246,13 @@ class Pooling2D(Layer):
         pass   
 
 
-    def deepcopy(self) -> 'Pooling2D':
+    def deepcopy(self) -> 'PoolingND':
         """Creates a new deepcopy of this layer with the exact same parameters."""
-        new_neuron = Pooling2D(self.funct, 
-                               (self.kernel_height, self.kernel_width), self.in_size, 
-                               (self.stride_h, self.stride_w), (self.pad_height, self.pad_width))
+        new_neuron = PoolingND(self.funct, 
+                               self.kernel_size, 
+                               self.in_size, 
+                               self.strides_all, 
+                               self.padding_all)
         return new_neuron
     
 
@@ -270,10 +272,10 @@ class Pooling2D(Layer):
         str | None
             If no file is specified, a string containing all information about this model is returned.
         """
-        write_ret_str = f"Pooling2D\u00A0{repr(self.funct)}\u00A0" + " ".join(list(map(str, self.in_size))) + \
-                        f"\nLENS\u00A0{self.kernel_height}\u00A0{self.kernel_width}" + \
-                        f"\u00A0{self.stride_h}\u00A0{self.stride_w}" + \
-                        f"\u00A0{self.pad_height}\u00A0{self.pad_width}\n\u00A0"
+        write_ret_str = f"PoolingND\u00A0{repr(self.funct)}\u00A0" + " ".join(list(map(str, self.in_size))) + \
+                        f"\nLENS\u00A0" + " ".join(list(map(str, self.kernel_size))) + \
+                        f"\u00A0" + " ".join(list(map(str, self.strides_all))) + \
+                        f"\u00A0" + " ".join(list(map(str, self.padding_all))) + "\n\u00A0"
         if not filename:
             return write_ret_str
         if filename.find(".cspn") == -1:
@@ -284,7 +286,7 @@ class Pooling2D(Layer):
 
 
     @staticmethod
-    def from_save(context: str, file_load: bool = False) -> 'Pooling2D':
+    def from_save(context: str, file_load: bool = False) -> 'PoolingND':
         """
         A static method which creates an instance of this layer class based on the information provided.
         The string provided can either be a file name/path, or the encoded string containing the layer's
@@ -303,8 +305,8 @@ class Pooling2D(Layer):
 
         Returns
         -------
-        Pooling2D
-            A new `Pooling2D` layer containing all of the information encoded in the string or file provided.
+        PoolingND
+            A new `PoolingND` layer containing all of the information encoded in the string or file provided.
         """
         def parse_and_return(handled_str: str):
             data_arr = handled_str.splitlines()
@@ -313,10 +315,10 @@ class Pooling2D(Layer):
             in_size = tuple(map(int, main_info[2].split()))
 
             sec_info = data_arr[1].split("\u00A0")[1:]
-            k_sizes = (int(sec_info[0]), int(sec_info[1]))
-            strides = (int(sec_info[2]), int(sec_info[3]))
-            padding = (int(sec_info[4]), int(sec_info[5]))
-            return Pooling2D(funct, k_sizes, in_size, strides, padding)
+            k_sizes = tuple(map(int, sec_info[0].strip().split()))
+            strides = tuple(map(int, sec_info[1].strip().split()))
+            padding = tuple(map(int, sec_info[2].strip().split()))
+            return PoolingND(funct, k_sizes, in_size, strides, padding)
 
         if file_load:
             full_parse_str = None

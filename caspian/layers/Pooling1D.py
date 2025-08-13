@@ -36,8 +36,6 @@ class Pooling1D(Layer):
     pad_left, pad_right : int
         The number of data points to be added to the left and right sides of the data, respectively.
         Corresponds to each half of `padding_all`, with `pad_left` being the first to increment.
-    opt : Optimizer
-        The provided optimizer which modifies the learning gradient before updating weights.
 
 
     Examples

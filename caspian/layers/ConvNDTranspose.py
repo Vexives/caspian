@@ -147,14 +147,10 @@ class ConvNDTranspose(Layer):
 
         # Stride, Kernel, and Padding Initialization
         self.padding_all = (padding,) * _in_len if type(padding) == int else padding
-        self.pad_details = ((0,0), (0,0)) + tuple(((padding+1)//2, padding//2) for _ in range(_in_len)) \
-                           if type(padding) == int else \
-                           ((0,0), (0,0)) + tuple(((p+1)//2, p//2) for p in padding)
+        self.pad_details = ((0,0), (0,0)) + tuple(((p+1)//2, p//2) for p in self.padding_all)
 
         self.out_padding_all = (out_padding,) * _in_len if type(out_padding) == int else out_padding
-        self.out_pad_details = ((0,0), (0,0)) + tuple(((out_padding+1)//2, out_padding//2) for _ in range(_in_len)) \
-                               if type(padding) == int else \
-                               ((0,0), (0,0)) + tuple(((p+1)//2, p//2) for p in out_padding)
+        self.out_pad_details = ((0,0), (0,0)) + tuple(((p+1)//2, p//2) for p in self.out_padding_all)
 
         self.strides_all = (strides,) * _in_len if type(strides) == int else strides
         self.kernel_size = (kernel_size,) * _in_len if type(kernel_size) == int else kernel_size

@@ -21,6 +21,7 @@ from .Pooling3D import Pooling3D
 from .Upsampling3D import Upsampling3D
 from .ConvND import ConvND
 from .ConvNDTranspose import ConvNDTranspose
+from .PoolingND import PoolingND
 from .UpsamplingND import UpsamplingND
 from .Bilinear import Bilinear
 from .Container import Container
@@ -60,6 +61,7 @@ layer_dict: dict[str, Layer] = {"Layer":Layer,
                                 "Pooling1D":Pooling1D,
                                 "Pooling2D":Pooling2D,
                                 "Pooling3D":Pooling3D,
+                                "PoolingND":PoolingND,
                                 "Bilinear":Bilinear,
                                 "Container":Container,
                                 "Embedding":Embedding,

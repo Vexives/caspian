@@ -6,7 +6,7 @@ from ..utilities import all_positive, all_ints, confirm_shape, check_types, \
 
 class Pooling3D(Layer):
     """
-    A 2D pooling layer which performs a downsampling transformation on the data provided.
+    A 3D pooling layer which performs a downsampling transformation on the data provided.
 
     Only supports data with 3 or 4 (when batch is included) dimensions as input. The exact shape
     and/or batch size must be specifically stated when initializing the layer.
@@ -46,8 +46,6 @@ class Pooling3D(Layer):
     pad_front, pad_back : int
         The number of data points to be added to the front and back sides of the data, respectively.
         Corresponds to each half of `pad_depth`, with `pad_front` being the first to increment.
-    opt : Optimizer
-        The provided optimizer which modifies the learning gradient before updating weights.
 
 
     Examples
