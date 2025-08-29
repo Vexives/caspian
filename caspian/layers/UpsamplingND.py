@@ -32,7 +32,7 @@ class UpsamplingND(Layer):
 
         Parameters
         ----------
-        rate : tuple[int, int, int] | int
+        rate : tuple[int, ...] | int
             An int or tuple of ints which represent the multiplicative size scaling rate of this 
             layer for all three dimensions.
 
@@ -64,7 +64,7 @@ class UpsamplingND(Layer):
             The forward propagated array with a new upsampled size.
         """
         dim_scales = np.ones(self.rate) if type(self.rate) != int \
-                     else np.ones((self.rate,) * (len(data.shape) - 2))
+                     else np.ones((self.rate,) * (len(data.shape) - 1))
         if training:
             self.__last_in = data
             self.__last_rate = dim_scales

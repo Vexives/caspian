@@ -400,8 +400,8 @@ class ConvNDTranspose(Layer):
                         " ".join(list(map(str, self.strides_all))) + "\u00A0" +  \
                         " ".join(list(map(str, self.padding_all))) + "\u00A0" +  \
                         " ".join(list(map(str, self.out_padding_all))) + "\u00A0" +  \
-                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
-                        "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
+                        f"{self.use_bias}\u00A0{repr(self.opt)}\n" + \
+                        "BIAS " + " ".join(list(map(str, self.bias_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.kernel_weights.flatten().tolist()))) + "\n"
@@ -459,7 +459,7 @@ class ConvNDTranspose(Layer):
                                 tuple(map(int, prop_info[3].split())),          # Strides
                                 tuple(map(int, prop_info[4].split())),          # Padding
                                 tuple(map(int, prop_info[5].split())),          # Out-Padding
-                                bool(prop_info[6]),                             # Use-bias
+                                prop_info[6] == "True",                         # Use-bias
                                 opt)
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels

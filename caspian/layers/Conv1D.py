@@ -309,7 +309,7 @@ class Conv1D(Layer):
         """
         write_ret_str = f"Conv1D\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
                         f"\u00A0{self.kernel_size}\u00A0{self.strides}\u00A0{self.padding_all}" + \
-                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
+                        f"\u00A0{self.use_bias}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
@@ -367,7 +367,7 @@ class Conv1D(Layer):
                                 tuple(map(int, input_info)),        #Input size
                                 int(prop_info[4]),                  #Strides
                                 int(prop_info[5]),                  #Padding
-                                bool(prop_info[6]),                 #Use-bias
+                                prop_info[6] == "True",             #Use-bias
                                 opt)                                
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels

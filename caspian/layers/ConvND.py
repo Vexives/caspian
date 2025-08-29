@@ -353,10 +353,10 @@ class ConvND(Layer):
             If no file is specified, a string containing all information about this model is returned.
         """
         write_ret_str = f"ConvND\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}\u00A0" + \
-                        " ".join(self.kernel_size) + "\u00A0" + \
-                        " ".join(self.strides_all) + "\u00A0" +  \
-                        " ".join(self.padding_all) + "\u00A0" +  \
-                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
+                        " ".join(list(map(str, self.kernel_size))) + "\u00A0" + \
+                        " ".join(list(map(str, self.strides_all))) + "\u00A0" +  \
+                        " ".join(list(map(str, self.padding_all))) + "\u00A0" +  \
+                        f"{self.use_bias}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.out_size))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
@@ -414,7 +414,7 @@ class ConvND(Layer):
                                 tuple(map(int, input_info)),                    # Input size
                                 tuple(map(int, prop_info[3].split())),          # Strides
                                 tuple(map(int, prop_info[4].split())),          # Padding
-                                bool(prop_info[5]),                             # Use-bias
+                                prop_info[5] == "True",                         # Use-bias
                                 opt)
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels
