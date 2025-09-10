@@ -424,7 +424,8 @@ library are perfectly safe to use and modify, there are some that use unsafe mem
 
 ## Future Plans and Developments
 
-- Transformer grade layers (Attention, Encoders, Decoders, etc.)
+- Recurrent Layers (RNN & LSTM Cells, etc.)
+- Transformer grade layers (Encoders, Decoders, etc.)
 - More activation functions, base layers, and optimizers.
 - Improved model saving and loading.
 - More utilities, like train/test data splitting, etc.
