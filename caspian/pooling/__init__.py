@@ -12,9 +12,11 @@ def parse_pool_info(input: str) -> PoolFunc:
     if all_params[0] not in pool_funct_dict:
         return PoolFunc()
     
-    for param in all_params[1:]:
-        if param.find('.') != -1:
-            param = float(param)
-            continue
-        param = int(param)
-    return pool_funct_dict[all_params[0]](*all_params[1:])
+    format_params = list(map(__map_to_numeric, all_params[1:]))
+    return pool_funct_dict[all_params[0]](*format_params)
+
+def __map_to_numeric(input: str) -> tuple | int:
+    try:
+        return int(input)
+    except:
+        return float(input)

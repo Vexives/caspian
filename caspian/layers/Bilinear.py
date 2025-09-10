@@ -153,7 +153,7 @@ class Bilinear(Layer):
             same shapes as this layer's input shapes. The first gradient corresponds to the first input,
             and the second gradient corresponds to the second input.
         """
-        new_err = cost_err * self.funct(self.__last_out, True)
+        new_err = self.funct(self.__last_out, cost_err)
         new_grad = self.opt(new_err)
         layer_grad = np.einsum("...o,...i,...j->...oij", 
                                new_grad, 
@@ -172,6 +172,7 @@ class Bilinear(Layer):
     def step(self) -> None:
         """Adds one step to this layer's optimizer and scheduler."""
         self.opt.step()
+        self.funct.step()
     
 
     def clear_grad(self) -> None:
@@ -179,6 +180,7 @@ class Bilinear(Layer):
         self.__last_in = None
         self.__last_out = None
         self.opt.reset_grad()
+        self.funct.reset_grad()
 
 
     def set_optimizer(self, opt: Optimizer = StandardGD()) -> None:

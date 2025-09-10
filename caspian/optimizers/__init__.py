@@ -20,10 +20,12 @@ def parse_opt_info(input: str) -> Optimizer:
     if all_params[0] not in opt_dict:
         return Optimizer()
     
-    for param in all_params[1:-1]:
-        if param.find('.') != -1:
-            param = float(param)
-            continue
-        param = int(param)
+    format_params = list(map(__map_to_numeric, all_params[1:-1]))
     sched = parse_sched_info(all_params[-1])
-    return opt_dict[all_params[0]](*all_params[1:-1], sched)
+    return opt_dict[all_params[0]](*format_params, sched)
+
+def __map_to_numeric(input: str) -> tuple | int:
+    try:
+        return int(input)
+    except:
+        return float(input)

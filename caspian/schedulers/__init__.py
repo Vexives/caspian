@@ -16,12 +16,13 @@ def parse_sched_info(input: str) -> Scheduler:
     if all_params[0] not in sched_dict:
         return Scheduler()
     
-    for param in all_params[1:]:
-        if param.find('.') != -1:
-            param = float(param)
-            continue
-        try:
-            param = int(param)
-        except:
-            param = None
-    return sched_dict[all_params[0]](*all_params[1:])
+    format_params = list(map(__map_to_numeric, all_params[1:]))
+    return sched_dict[all_params[0]](*format_params)
+
+def __map_to_numeric(input: str) -> tuple | int:
+    if input.find('.') != -1:
+        return float(input)
+    try:
+        return int(input)
+    except:
+        return None

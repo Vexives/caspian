@@ -1,13 +1,20 @@
 from ..cudalib import np
 from ..optimizers import Optimizer
-from ..utilities import all_ints, check_types, InvalidDataException
+from ..utilities import all_ints, check_types
 
 class Layer():
     '''
     A basic layer container class which all Caspian network layers inherit from.
     Any custom layers should inherit from this container class.
     
-    Performs no operations and takes no arguments.
+    Performs no operations and takes the input/output sizes as base arguments.
+
+    Attributes
+    ----------
+    in_size : tuple[int, ...]
+        The expected input shape of the layer. If `None`, can be given any shape.
+    out_size : tuple[int, ...]
+        The expected output shape of the layer. If `None`, can return any shape.
     '''
     @check_types(("in_size", all_ints, "Incorrect input shape type - Must be all integers."),
                  ("out_size", all_ints, "Incorrect output shape type - Must be all integers."))
@@ -23,7 +30,20 @@ class Layer():
         pass
 
     def backward(self, cost_err: np.ndarray) -> np.ndarray:
-        pass
+        """
+        Returns the original error gradient.
+
+        Parameters
+        ----------
+        cost_err : ndarray
+            The learning gradient that will be returned.
+
+        Returns
+        -------
+        ndarray
+            The same learning gradient as passed into the layer.
+        """
+        return cost_err
 
     def step(self) -> None:
         pass

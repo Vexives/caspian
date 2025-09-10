@@ -5,8 +5,7 @@ from ..utilities import check_types, all_positive
 
 class LayerNorm(Layer):
     """
-    A layer-based normalization layer which normalizes the given data across all dimensions
-    except for the batches.
+    A layer-based normalization layer which normalizes the given data across all provided dimensions.
 
     Supports any given shape and dimensionality as an input, as long as the shape is provided at
     initialization (batch dimension NOT included).
@@ -41,13 +40,13 @@ class LayerNorm(Layer):
     >>> in_arr = np.arange(10).reshape((2, 5))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr)
-    [[ 0.51179302  0.31993403  0.31220338 -0.00582093 -0.03786925]
-     [ 0.04312625 -0.15719677 -0.38710092 -0.18183973 -0.57738105]]
+    [[-1.5666989  -1.21854359 -0.87038828 -0.52223297 -0.17407766]
+     [ 0.17407766  0.52223297  0.87038828  1.21854359  1.5666989 ]]
     """
     @check_types(("input_size", all_positive, "Argument \"input_size\" must contain all values above 0."),
                  ("var_eps", lambda x: x > 0.0, "Argument \"var_eps\" must be above 0.0."))
     def __init__(self, input_size: tuple[int, ...], weights: bool = True,
-                 biases: bool = True, var_eps: float = 1e-8,
+                 biases: bool = False, var_eps: float = 1e-8,
                  optimizer: Optimizer = StandardGD()):
         """
         Initializes a `LayerNorm` layer using given parameters.
@@ -67,8 +66,9 @@ class LayerNorm(Layer):
             gradient descent path.        
         """
         super().__init__(input_size, input_size)
-        self.layer_weight = np.random.uniform(-0.5, 0.5, (int(np.prod(input_size)),)) if weights is True else None
-        self.bias_weight = np.zeros((int(np.prod(input_size)),)) if biases is True else None
+        self.norm_size = int(np.prod(input_size))
+        self.layer_weight = np.ones((self.norm_size,)) if weights is True else None
+        self.bias_weight = np.zeros((self.norm_size,)) if biases is True else None
 
         self.var_eps = var_eps
         self.opt = optimizer
@@ -94,9 +94,9 @@ class LayerNorm(Layer):
             The forward propagated array with all values in each batch normalized.
         """        
         batch_data = np.expand_dims(data, axis=0) if len(data.shape) == len(self.in_size) else data
-        shaped_data = batch_data.reshape((batch_data.shape[0], -1))
+        shaped_data = batch_data.reshape((-1, self.norm_size))
 
-        #Mean and variance of batches
+        # Mean and variance of batches
         layer_mean = np.mean(shaped_data, axis=-1, keepdims=True)
         layer_var = np.var(shaped_data, axis=-1, keepdims=True)
 
@@ -107,7 +107,7 @@ class LayerNorm(Layer):
             self.__norm_res = new_data
             self.__last_stdv = stdv
 
-        #Full weight and bias application, if applicable
+        # Full weight and bias application, if applicable
         new_data = self.layer_weight * new_data if self.layer_weight is not None else new_data
         new_data = new_data + self.bias_weight if self.bias_weight is not None else new_data
         return new_data.reshape(data.shape)
@@ -131,16 +131,17 @@ class LayerNorm(Layer):
             same shape as this layer's input shape.
         """
         batch_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) == len(self.in_size) else cost_err
-        shaped_err = batch_err.reshape((batch_err.shape[0], -1))
-        shaped_err *= self.layer_weight if self.layer_weight is not None else 1
+        shaped_err = batch_err.reshape((-1, self.norm_size))
+        if self.layer_weight is not None:
+            shaped_err *= self.layer_weight
 
-        opt_err = self.opt.process_grad(shaped_err)                   #Weight/Bias update gradient with optimizer
+        opt_err = self.opt.process_grad(shaped_err)   # Weight/Bias update gradient with optimizer
 
         ret_grad = (shaped_err - shaped_err.mean(axis=-1, keepdims=True) 
                     - self.__norm_res * (shaped_err * self.__norm_res).mean(axis=-1, keepdims=True)) \
                     / self.__last_stdv
         
-        #Update weights and biases (if applicable)
+        # Update weights and biases (if applicable)
         if self.layer_weight is not None:
             self.layer_weight += (opt_err * self.__norm_res).sum(axis=0)
     

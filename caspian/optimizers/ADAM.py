@@ -1,6 +1,7 @@
 from ..cudalib import np
 from . import Optimizer
 from ..schedulers import Scheduler, SchedulerLR
+from ..utilities import check_types
 
 class ADAM(Optimizer):
     """
@@ -26,6 +27,7 @@ class ADAM(Optimizer):
     iter : int
         The epoch or iteration of the optimizer.
     """
+    @check_types()
     def __init__(self, decay_one: float = 0.9, decay_two: float = 0.999, eps: float = 1e-8,
                  learn_rate: float = 0.01, sched: Scheduler = SchedulerLR()) -> None:
         self.learn_rate = learn_rate

@@ -46,11 +46,11 @@ class BatchNorm(Layer):
 
     Examples
     --------
-    >>> layer1 = BatchNorm(5)
-    >>> in_arr = np.arange(5)
+    >>> layer1 = BatchNorm(5, 3)
+    >>> in_arr = np.random.randn(4, 5, 10, 10)
     >>> out_arr = layer1(in_arr)
-    >>> print(out_arr)
-    [-1.41421356 -0.70710678  0.          0.70710678  1.41421356]
+    >>> print(out_arr.shape)
+    (4, 5, 10, 10)
     """
     @check_types(("channels", lambda x: x > 0, "Argument \"channels\" must be greater than 0."),
                  ("dimensions", lambda x: x > 0, "Argument \"dimensions\" must be greater than 0."),
@@ -70,16 +70,16 @@ class BatchNorm(Layer):
         dimensions : int
             The number of dimensions that this layer should expect from the inputs and gradients given.
             The batch dimension is NOT counted in this number.
+        scale : bool, default: True
+            A boolean which determines whether the learnable gamma parameter array is initialized.
+        shift : bool, default: True
+            A boolean which determines whether the learnable beta parameter array is initialized.
         momentum : float | None, default: 0.9
             The momentum of the running mean and variance of this layer. Set to `None` for the running
             variables to not be used.
         axis : int, default: 1
             The axis of channels of the expected input arrays. Standard expected channel axis from other layers
             is 1, with axis 0 representing the batches.
-        scale : bool, default: True
-            A boolean which determines whether the learnable gamma parameter array is initialized.
-        shift : bool, default: True
-            A boolean which determines whether the learnable beta parameter array is initialized.
         var_eps : float, default: 1e-8
             A float which corresponds to the epsilon value added to the square root variance during normalization.
         optimizer : Optimizer, default: StandardGD()
@@ -122,7 +122,7 @@ class BatchNorm(Layer):
         ndarray
             The forward propagated array with all values normalized.
         """        
-        batch_data = np.expand_dims(data, axis=0) if len(data.shape) != self.dims+1 else data
+        batch_data = np.expand_dims(data, axis=0) if len(data.shape) == self.dims else data
         batch_data = batch_data.swapaxes(self.axis, -1)
         shaped_data = batch_data.reshape((-1, batch_data.shape[-1]))
 
@@ -173,7 +173,7 @@ class BatchNorm(Layer):
             same shape as this layer's input shape.
         """
         #Update gamma and beta with optimzied gradient (if applicable)
-        batch_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) != self.dims+1 else cost_err
+        batch_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) == self.dims else cost_err
         batch_err = batch_err.swapaxes(self.axis, -1)
 
         shaped_err = batch_err.reshape((-1, batch_err.shape[-1]))
@@ -230,7 +230,7 @@ class BatchNorm(Layer):
                                self.momentum, self.axis,
                                self.var_eps, self.opt.deepcopy())
         new_neuron.gamma = self.gamma.copy() if self.gamma is not None else None
-        new_neuron.beta = self.gamma.copy() if self.beta is not None else None
+        new_neuron.beta = self.beta.copy() if self.beta is not None else None
         new_neuron.running_mean = self.running_mean.copy() if self.running_mean is not None else None
         new_neuron.running_var = self.running_var.copy() if self.running_var is not None else None
         return new_neuron
@@ -308,8 +308,8 @@ class BatchNorm(Layer):
             r_var = None if rv_data[1] == "None" else np.array(list(map(float, rv_data[1].split()))).reshape((channels,))
 
             new_neuron = BatchNorm(channels, dims, 
-                                   False if gamma is None else True,
-                                   False if beta is None else True, 
+                                   gamma is not None,
+                                   beta is not None, 
                                    momentum, axis, eps, opt)
             new_neuron.gamma = gamma
             new_neuron.beta = beta

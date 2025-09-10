@@ -28,11 +28,11 @@ class Embedding(Layer):
 
     Examples
     --------
-    >>> layer1 = Embedding(10, 5)
+    >>> layer1 = Embedding(10, 50)
     >>> in_arr = np.random.randint(0, 10, (12, 10))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
-    (12, 5)
+    (12, 50)
     """
     @check_types(("vocab_len", lambda x: x > 0, "Argument \"vocab_len\" must be greater than 0."),
                  ("embed_size", lambda x: x > 0, "Argument \"embed_size\" must be greater than 0."))

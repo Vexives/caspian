@@ -84,7 +84,9 @@ class Upsampling3D(Layer):
             The new learning gradient for any layers that provided data to this instance. Will have the
             same shape as this layer's input shape.
         """
-        ret_grad = cost_err.reshape((-1, *self.rate, *self.__last_in.shape[-3:])).sum(axis=(-4, -5, -6))
+        ret_grad = cost_err.reshape((-1, *self.rate, *self.__last_in.shape[-3:])) \
+                   .sum(axis=(-4, -5, -6)) \
+                   .reshape(self.__last_in.shape)
         return ret_grad
     
 

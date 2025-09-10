@@ -62,7 +62,7 @@ class Mult(Layer):
 
     def backward(self, cost_err: np.ndarray) -> tuple[np.ndarray, ...]:
         """
-        Returns the provided gradient, as there is no change for an addition operation.
+        Returns the multiplication of the initial inputs with the given gradient.
 
         Parameters
         ----------

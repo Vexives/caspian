@@ -45,8 +45,6 @@ class Pooling2D(Layer):
     __window_shape : tuple[int, int, int, int, int, int]
         The shape that the data will take whenever a strided view is created for forward and backward
         passes.
-    opt : Optimizer
-        The provided optimizer which modifies the learning gradient before updating weights.
 
 
     Examples

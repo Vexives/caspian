@@ -239,11 +239,11 @@ class Conv1DTranspose(Layer):
             If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
         if not confirm_shape(cost_err.shape, self.out_size, 2):
-            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
+            raise UnsafeMemoryAccessException(f"Gradient data shape does not match expected shape. - {cost_err.shape}, {self.out_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 3 else cost_err   #Enforce batches.
 
         #Optimized & standard gradient preparation
-        new_err = new_err * self.funct(self.__last_out, True)         # Gradient for backward pass
+        new_err = self.funct(self.__last_out, new_err)              # Gradient for backward pass
         opt_grad = self.opt.process_grad(new_err)                   # Gradient for updating weights
 
         new_err = new_err[:, :, self.out_pad_left:(-self.out_pad_right or None)]
@@ -294,6 +294,7 @@ class Conv1DTranspose(Layer):
     def step(self) -> None:
         """Adds one step to this layer's optimizer and scheduler."""
         self.opt.step()
+        self.funct.step()
 
 
     def clear_grad(self) -> None:
@@ -301,6 +302,7 @@ class Conv1DTranspose(Layer):
         self.__last_in = None
         self.__last_out = None
         self.opt.reset_grad()
+        self.funct.reset_grad()
     
 
     def set_optimizer(self, opt: Optimizer = StandardGD()) -> None:
@@ -343,7 +345,7 @@ class Conv1DTranspose(Layer):
         """
         write_ret_str = f"Conv1DTranspose\u00A0{repr(self.funct)}\u00A0{self.kernel_weights.shape[0]}" + \
                         f"\u00A0{self.kernel_size}\u00A0{self.strides}\u00A0{self.padding_all}\u00A0{self.out_padding_all}" + \
-                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
+                        f"\u00A0{self.use_bias}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.bias_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
@@ -402,7 +404,7 @@ class Conv1DTranspose(Layer):
                                          int(prop_info[4]), 
                                          int(prop_info[5]), 
                                          int(prop_info[6]), 
-                                         bool(prop_info[7]),
+                                         prop_info[7] == "True",
                                          opt)
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels

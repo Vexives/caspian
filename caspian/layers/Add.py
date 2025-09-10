@@ -53,23 +53,6 @@ class Add(Layer):
         return sum(data)
     
 
-    def backward(self, cost_err):
-        """
-        Returns the provided gradient, as there is no change for an addition operation.
-
-        Parameters
-        ----------
-        cost_err : ndarray
-            The learning gradient that will be processed and returned.
-
-        Returns
-        -------
-        ndarray
-            The given learning gradient.
-        """
-        return cost_err
-    
-
     def deepcopy(self):
         """Creates a new deepcopy of this layer."""
         return Add()

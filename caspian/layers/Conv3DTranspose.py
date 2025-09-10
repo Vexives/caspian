@@ -75,7 +75,7 @@ class Conv3DTranspose(Layer):
 
     Examples
     --------
-    >>> layer1 = Conv2DTranspose(ReLU(), 2, 3, (5, 9, 8, 7), strides=1)
+    >>> layer1 = Conv3DTranspose(ReLU(), 2, 3, (5, 9, 8, 7), strides=1)
     >>> in_arr = np.random.uniform(0.0, 1.0, (5, 9, 8, 7))
     >>> out_arr = layer1(in_arr)
     >>> print(out_arr.shape)
@@ -303,10 +303,10 @@ class Conv3DTranspose(Layer):
             If the shape of the given array will lead to any un-safe memory calls during the pass.
         """
         if not confirm_shape(cost_err.shape, self.out_size, 4):
-            raise UnsafeMemoryAccessException(f"Input data shape does not match expected shape. - {cost_err.shape}, {self.in_size}")
+            raise UnsafeMemoryAccessException(f"Gradient data shape does not match expected shape. - {cost_err.shape}, {self.out_size}")
         new_err = np.expand_dims(cost_err, axis=0) if len(cost_err.shape) < 5 else cost_err   #Enforce batches.
 
-        new_err = new_err * self.funct(self.__last_out, True)         # Gradient for backward pass
+        new_err = self.funct(self.__last_out, new_err)              # Gradient for backward pass
         opt_grad = self.opt.process_grad(new_err)                   # Gradient for updating weights
 
         new_err = new_err[:, :, self.out_pad_front:(-self.out_pad_back or None),
@@ -377,6 +377,7 @@ class Conv3DTranspose(Layer):
     def step(self) -> None:
         """Adds one step to this layer's optimizer and scheduler."""
         self.opt.step()
+        self.funct.step()
 
 
     def clear_grad(self) -> None:
@@ -384,6 +385,7 @@ class Conv3DTranspose(Layer):
         self.__last_in = None
         self.__last_out = None
         self.opt.reset_grad()
+        self.funct.reset_grad()
     
 
     def set_optimizer(self, opt: Optimizer = StandardGD()) -> None:
@@ -435,7 +437,7 @@ class Conv3DTranspose(Layer):
                         f"\u00A0{self.stride_d}\u00A0{self.stride_h}\u00A0{self.stride_w}" + \
                         f"\u00A0{self.pad_depth}\u00A0{self.pad_height}\u00A0{self.pad_width}" + \
                         f"\u00A0{self.out_pad_depth}\u00A0{self.out_pad_height}\u00A0{self.out_pad_width}" + \
-                        f"\u00A0{int(self.use_bias)}\u00A0{repr(self.opt)}\n" + \
+                        f"\u00A0{self.use_bias}\u00A0{repr(self.opt)}\n" + \
                         "BIAS " + " ".join(list(map(str, self.bias_weights.shape))) + "\n" + \
                          " ".join(list(map(str, self.bias_weights.flatten().tolist()))) + "\n"
         write_ret_str += "KERNEL " + " ".join(list(map(str, self.kernel_weights.shape))) + "\n" + \
@@ -494,7 +496,7 @@ class Conv3DTranspose(Layer):
                                          (int(prop_info[6]), int(prop_info[7]), int(prop_info[8])),    # Strides
                                          (int(prop_info[9]), int(prop_info[10]), int(prop_info[11])),  # Padding
                                          (int(prop_info[12]), int(prop_info[13]), int(prop_info[14])), # Out-padding
-                                         bool(prop_info[15]),                                               # Use-bias
+                                         prop_info[15] == "True",                                               # Use-bias
                                          opt)
             new_neuron.bias_weights = biases
             new_neuron.kernel_weights = kernels

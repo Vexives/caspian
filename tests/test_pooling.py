@@ -1,4 +1,4 @@
-from caspian.layers import Pooling1D, Pooling2D, Pooling3D
+from caspian.layers import Pooling1D, Pooling2D, Pooling3D, PoolingND
 from caspian.pooling import Maximum, Minimum, Average
 from caspian.utilities import InvalidDataException, UnsafeMemoryAccessException
 import numpy as np
@@ -349,6 +349,159 @@ def test_pooling3D():
 
 
 
+def test_poolingND():
+    # Incorrect sizes
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, 5)
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (5,))
+
+
+    # Inference mode grad variables
+    layer = PoolingND(Maximum(), 2, (2, 10, 10, 10, 10), 2)
+    data_in = np.zeros((2, 10, 10, 10, 10))
+    _ = layer(data_in)
+    data_out = np.zeros((2, 5, 5, 5, 5))
+    with pytest.raises(AttributeError):
+        _ = layer.backward(data_out)
+
+
+    # Private variables not accessable outside of layer
+    _ = layer(data_in, True)
+    with pytest.raises(AttributeError):
+        _ = layer.__last_in == None
+    layer.clear_grad()
+    
+
+    # Forward sizes
+    layer = PoolingND(Maximum(), (2, 4, 5, 4), (2, 20, 20, 20, 20), (2, 4, 5, 4))
+    data_in = np.zeros((2, 20, 20, 20, 20))
+    assert layer(data_in).shape == (2, 10, 5, 4, 5)
+
+    layer = PoolingND(Maximum(), 3, (2, 20, 20, 20, 10), 1)
+    data_in = np.zeros((2, 20, 20, 20, 10))
+    assert layer(data_in).shape == (2, 18, 18, 18, 8)
+
+    layer = PoolingND(Maximum(), 3, (2, 18, 15), 3)
+    data_in = np.zeros((2, 18, 15))
+    assert layer(data_in).shape == (2, 6, 5)
+
+    layer = PoolingND(Maximum(), (2, 5, 2, 3, 2), (2, 5, 20, 5, 10, 5), (1, 2, 2, 2, 1), 3)
+    data_in = np.zeros((2, 5, 20, 5, 10, 5))
+    assert layer(data_in).shape == (2, 7, 10, 4, 6, 7)
+
+
+    # Backward sizes
+    layer = PoolingND(Maximum(), (2, 4, 5, 4), (2, 20, 20, 20, 20), (2, 4, 5, 4))
+    data_in = np.zeros((2, 20, 20, 20, 20))
+    data_out = np.zeros((2, 10, 5, 4, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (2, 20, 20, 20, 20)
+
+    layer = PoolingND(Maximum(), 3, (2, 20, 20, 20, 10), 1)
+    data_in = np.zeros((2, 20, 20, 20, 10))
+    data_out = np.zeros((2, 18, 18, 18, 8))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (2, 20, 20, 20, 10)
+
+    layer = PoolingND(Maximum(), 3, (2, 18, 15), 3)
+    data_in = np.zeros((2, 18, 15))
+    data_out = np.zeros((2, 6, 5))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (2, 18, 15)
+
+    layer = PoolingND(Maximum(), (2, 5, 2, 3, 2), (2, 5, 20, 5, 10, 5), (1, 2, 2, 2, 1), 3)
+    data_in = np.zeros((2, 5, 20, 5, 10, 5))
+    data_out = np.zeros((2, 7, 10, 4, 6, 7))
+    _ = layer(data_in, True)
+    assert layer.backward(data_out).shape == (2, 5, 20, 5, 10, 5)
+
+
+    # Type failure checking
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 1.1, (2, 10, 10, 10))
+    
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 1, "test")
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (2, 10, 10, 10), "c")
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 1, (2, 10, 10), (2,))
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (2, 10, 10, 10), 0)
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (2, 10, 10, 10), 1, -1)
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(None, 2, (2, 10, 10, 10))
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), (2, 1), (2, 10, 10, 10))
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (2, 10, 10, 10), (2, 2))
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (2, 10, 10, 10), 2, (1, 0))
+
+    with pytest.raises(InvalidDataException):
+        layer = PoolingND(Maximum(), 2, (2,))
+
+
+    # Incorrect shape tests
+    layer = Pooling3D(Maximum(), 2, (2, 20, 20, 20), 2)
+    data_in = np.zeros((2, 20, 20, 20))
+    data_false_in = np.zeros((3, 20, 20, 20))
+    data_false_out = np.zeros((2, 11, 10, 10))
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer(data_false_in)
+
+    _ = layer(data_in, True)
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer.backward(data_false_out)
+
+    data_false_in = np.zeros((2, 20, 20))
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer(data_false_in)
+
+    data_false_out = np.zeros((2, 10, 10))
+    _ = layer(data_in, True)
+    with pytest.raises(UnsafeMemoryAccessException):
+        _ = layer.backward(data_false_out)  
+
+
+    # Saving + Loading
+    layer = PoolingND(Maximum(), (2, 4, 2), (2, 20, 20, 20), (3, 2, 3), (1, 1, 7))
+    l_save = layer.save_to_file()
+    load_layer = PoolingND.from_save(l_save)
+    assert np.allclose(load_layer.in_size, layer.in_size)
+    assert np.allclose(load_layer.out_size, layer.out_size)
+    assert load_layer.kernel_size == layer.kernel_size
+    assert load_layer.input_length == layer.input_length
+    assert load_layer.padding_all == layer.padding_all
+    assert load_layer.pad_details == layer.pad_details
+    assert load_layer.strides_all == layer.strides_all
+
+
+    # Deepcopy
+    layer2 = layer.deepcopy()
+    assert layer2 is not layer
+    assert np.allclose(load_layer.in_size, layer.in_size)
+    assert np.allclose(load_layer.out_size, layer.out_size)
+    assert load_layer.kernel_size == layer.kernel_size
+    assert load_layer.input_length == layer.input_length
+    assert load_layer.padding_all == layer.padding_all
+    assert load_layer.pad_details == layer.pad_details
+    assert load_layer.strides_all == layer.strides_all    
+
+
+
+
 def test_maxpool():
     # Variable inheritence test
     pool = Maximum()
@@ -356,6 +509,7 @@ def test_maxpool():
     
     pool = Maximum(2)
     assert pool.axis == 2
+
 
     # Forward functionality tests
     pool = Maximum()
@@ -365,6 +519,7 @@ def test_maxpool():
     result = pool(array1)
     assert result.shape == (2,)
     assert np.allclose(expected, result)
+
 
     # Backward functionality tests
     expected = np.array([[0.0, 0.0, 1.0, 0.0],
